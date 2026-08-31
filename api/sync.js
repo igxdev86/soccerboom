@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
   if (!SB || !SK || !KEY) return res.status(500).json({ error: 'Missing SUPABASE_URL / SUPABASE_SERVICE_KEY / THESTATSAPI_KEY' });
 
   const start = Date.now();
-  const row = await sb('/sync_state?id=eq.main&select=value');
+  const row = req.query.reset ? null : await sb('/sync_state?id=eq.main&select=value');
   const s = (row && row[0] && row[0].value) || {
     phase: 'backfill', comps: null, ci: 0, seasons: null, si: 0, page: 1, matches: 0
   };
@@ -71,7 +71,10 @@ module.exports = async (req, res) => {
             if (p >= r.meta.total_pages) break;
           }
           await upsert('competitions', compRows);
-          s.comps = ids; s.ci = 0;
+          // UK leagues first so they land in the first batches.
+          const UK = ['England', 'Scotland', 'Wales', 'Northern Ireland'];
+          compRows.sort((a, b) => (UK.includes(b.country) ? 1 : 0) - (UK.includes(a.country) ? 1 : 0));
+          s.comps = compRows.map(c => c.id); s.ci = 0;
           continue;
         }
         if (s.ci >= s.comps.length) {
