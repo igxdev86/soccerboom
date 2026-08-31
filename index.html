@@ -100,6 +100,12 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .scoregrid button.on{background:var(--pitch);border-color:var(--pitch);color:#fff}
 tr.teamrow{cursor:pointer}
 .sub{font-size:.72rem;color:var(--ink-soft);font-weight:400}
+tr.betrow td{padding:6px 12px 10px;background:#fff;border-bottom:1px solid var(--line);font-size:.84rem}
+.fx{color:var(--ink-soft)}
+.bet{display:inline-block;margin:4px 6px 0 0;padding:4px 8px;border:2px solid var(--pitch);font-weight:700;font-size:.82rem}
+.bet small{font-weight:400;color:var(--ink-soft)}
+.bet.top{background:var(--pitch);color:#fff}
+.bet.top small{color:#DFF3E7}
 tr.teamrow td:first-child{font-weight:500}
 tr.hit td:first-child::after{content:" ●";color:var(--pitch)}
 tr.expand td{background:#F0F4EE;font-size:.86rem;padding:10px 12px}
@@ -351,7 +357,36 @@ function renderRows(){
     </table>
     <div class="small">${meta.matches?meta.matches.toLocaleString()+' matches in the database':''}${synced?' \u00b7 synced '+synced:''}${meta.phase==='backfill'?' \u00b7 backfill still running, more leagues arriving':''}. 90-minute scores, all venues, from each team's perspective.</div>`;
   const filtered=rows;
-  $('analysisOut').querySelectorAll('tr.teamrow').forEach(tr=>tr.onclick=()=>expandTeam(tr,filtered[+tr.dataset.i]));
+  $('analysisOut').querySelectorAll('tr.teamrow').forEach(tr=>{
+    const br=document.createElement('tr');br.className='betrow';br.innerHTML='<td colspan="4" class="fx">Tap for next fixture &amp; best bets</td>';
+    tr.after(br);
+    tr.onclick=()=>{expandTeam(tr.nextElementSibling,filtered[+tr.dataset.i]);loadBets(tr,filtered[+tr.dataset.i],true);};
+  });
+  const top=[...$('analysisOut').querySelectorAll('tr.teamrow')].slice(0,10);
+  top.forEach((tr,i)=>setTimeout(()=>loadBets(tr,filtered[+tr.dataset.i],false),i*250));
+}
+
+const betsCache={};
+async function loadBets(tr,t,full){
+  const cell=tr.nextElementSibling.firstElementChild;
+  if(tr.dataset.loaded&&!full)return;
+  if(!betsCache[t.team_id]){
+    cell.innerHTML='<span class="fx">Checking fixtures &amp; prices\u2026</span>';
+    try{const r=await fetch('/api/bets?team='+t.team_id);const j=await r.json();if(!r.ok)throw new Error(j.error||'error');betsCache[t.team_id]=j;}
+    catch(e){cell.innerHTML='<span class="fx">Could not load fixtures ('+esc(e.message)+')</span>';return;}
+  }
+  tr.dataset.loaded=1;
+  const j=betsCache[t.team_id];
+  if(!j.fixtures.length){cell.innerHTML='<span class="fx">No upcoming fixture found</span>';return;}
+  const fxs=full?j.fixtures:j.fixtures.slice(0,1);
+  cell.innerHTML=fxs.map(f=>{
+    const when=new Date(f.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' '+new Date(f.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const head=`<div><b>${f.is_home?'v':'at'} ${esc(f.opponent)}</b> <span class="fx">${when}</span></div>`;
+    if(f.note&&!f.bets.length)return head+`<div class="fx">${esc(f.note)}</div>`;
+    if(!f.bets.length)return head+'<div class="fx">No price beats the historical rate</div>';
+    const bets=(full?f.bets:f.bets.slice(0,3)).map((b,i)=>`<span class="bet${i===0?' top':''}">${esc(b.selection)} @ ${b.odds} <small>${esc(b.book)} \u00b7 hist ${b.model_pct}% v ${b.implied_pct}% \u00b7 EV +${b.ev}%</small></span>`).join('');
+    return head+bets;
+  }).join('<div style="height:8px"></div>')+(full?`<div class="fx" style="margin-top:6px">Historical frequency (${j.sample} matches${fxs[0].opp_sample?' + opponent '+fxs[0].opp_sample:''}) v best available price. Not a prediction \u2014 a price/frequency gap.</div>`:'');
 }
 
 function expandTeam(tr,t){
