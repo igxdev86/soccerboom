@@ -104,3 +104,32 @@ left join competitions c on c.id = pc.competition_id
 order by a.hits::numeric / a.games desc, a.hits desc
 limit 400;
 $$;
+
+-- v4: recency-weighted home/away attack & defence per team (for the Predictions tab).
+create or replace function team_form(p_ids text[])
+returns table (
+  team_id text,
+  home_n int, home_gf numeric, home_ga numeric,
+  away_n int, away_gf numeric, away_ga numeric
+)
+language sql stable as $$
+with x as (
+  select m.home_id as team_id, true as is_home, m.home_goals as gf, m.away_goals as ga, m.utc_date
+  from matches m where m.home_id = any(p_ids)
+  union all
+  select m.away_id, false, m.away_goals, m.home_goals, m.utc_date
+  from matches m where m.away_id = any(p_ids)
+), r as (
+  select *, row_number() over (partition by team_id, is_home order by utc_date desc) as rn from x
+), w as (
+  select *, power(0.97, rn - 1) as wt from r where rn <= 60
+)
+select team_id,
+  count(*) filter (where is_home)::int,
+  round(sum(gf * wt) filter (where is_home) / nullif(sum(wt) filter (where is_home), 0), 3),
+  round(sum(ga * wt) filter (where is_home) / nullif(sum(wt) filter (where is_home), 0), 3),
+  count(*) filter (where not is_home)::int,
+  round(sum(gf * wt) filter (where not is_home) / nullif(sum(wt) filter (where not is_home), 0), 3),
+  round(sum(ga * wt) filter (where not is_home) / nullif(sum(wt) filter (where not is_home), 0), 3)
+from w group by team_id;
+$$;
