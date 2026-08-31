@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoccerBoom — live scores & team analysis</title>
+<meta name="description" content="Football scores, match stats, xG and team scoreline analysis across 150+ competitions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFBF8;
+  --ink:#14201A;
+  --ink-soft:#4A5A50;
+  --pitch:#0E7A3C;
+  --pitch-deep:#0A5C2D;
+  --bulb:#FFD400;
+  --line:#DCE3DC;
+  --loss:#C0392B;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Barlow',system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.45}
+.wrap{max-width:680px;margin:0 auto;padding:0 14px 80px}
+
+header{padding:18px 0 10px;border-bottom:3px solid var(--ink)}
+.brand{font-family:'Barlow Condensed';font-weight:800;font-size:2.1rem;letter-spacing:.01em;line-height:1}
+.brand em{font-style:normal;color:var(--pitch)}
+.tag{color:var(--ink-soft);font-size:.85rem;margin-top:2px}
+
+nav{display:flex;gap:0;margin:14px 0 0;border:2px solid var(--ink)}
+nav button{flex:1;padding:10px 0;background:none;border:none;font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;color:var(--ink);cursor:pointer;letter-spacing:.02em}
+nav button.on{background:var(--ink);color:var(--paper)}
+nav button + button{border-left:2px solid var(--ink)}
+
+.bar{display:flex;gap:8px;align-items:center;margin:14px 0}
+select,input[type=text]{font-family:'Barlow';font-size:.95rem;padding:9px 10px;border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:0;width:100%}
+.datenav{display:flex;align-items:center;gap:6px}
+.datenav button{border:2px solid var(--ink);background:#fff;width:38px;height:38px;font-size:1.1rem;font-weight:700;cursor:pointer;flex:none}
+.datenav .day{font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;flex:1;text-align:center;white-space:nowrap}
+
+.match{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:13px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.match:active{background:#F0F4EE}
+.team{font-weight:500;font-size:.98rem}
+.team.h{text-align:right}
+.team.win{font-weight:700}
+.score{font-family:'Barlow Condensed';font-weight:800;font-size:1.7rem;min-width:74px;text-align:center;line-height:1;padding:4px 6px;background:var(--ink);color:var(--paper)}
+.score.sched{background:none;color:var(--ink-soft);font-size:1.05rem;font-weight:600}
+.score.live{background:var(--bulb);color:var(--ink)}
+.mstate{grid-column:1/-1;text-align:center;font-size:.72rem;color:var(--ink-soft);margin-top:-4px}
+.mstate .livedot{color:var(--pitch);font-weight:700}
+
+.note{padding:26px 8px;color:var(--ink-soft);text-align:center;font-size:.95rem}
+.note b{color:var(--ink)}
+.err{border:2px solid var(--loss);padding:12px;margin:14px 0;font-size:.92rem}
+.spin{padding:32px;text-align:center;color:var(--ink-soft)}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(20,32,26,.55);display:none;z-index:20;overflow-y:auto;padding:24px 10px}
+#modal.open{display:block}
+.sheet{background:var(--paper);max-width:560px;margin:0 auto;border:3px solid var(--ink)}
+.sheet-head{padding:16px;border-bottom:2px solid var(--ink);position:relative}
+.sheet-close{position:absolute;top:8px;right:8px;border:2px solid var(--ink);background:#fff;width:34px;height:34px;font-size:1.05rem;font-weight:700;cursor:pointer}
+.bigscore{font-family:'Barlow Condensed';font-weight:800;font-size:3rem;text-align:center;line-height:1;margin:6px 0 2px}
+.sheet-meta{text-align:center;color:var(--ink-soft);font-size:.85rem}
+.sheet-teams{display:flex;justify-content:space-between;font-family:'Barlow Condensed';font-weight:600;font-size:1.25rem;gap:12px}
+.statrow{padding:10px 16px;border-bottom:1px solid var(--line)}
+.statrow .nums{display:flex;justify-content:space-between;font-weight:700;font-size:.95rem}
+.statrow .lbl{text-align:center;font-size:.78rem;color:var(--ink-soft);margin:1px 0 5px}
+.statbar{display:flex;height:7px;gap:2px}
+.statbar i{display:block;background:var(--pitch)}
+.statbar i.a{background:var(--ink)}
+
+/* analysis */
+.results{border:2px solid var(--ink);margin-top:8px;background:#fff;max-height:230px;overflow-y:auto}
+.results button{display:block;width:100%;text-align:left;padding:10px 12px;background:none;border:none;border-bottom:1px solid var(--line);font-size:.95rem;cursor:pointer}
+.results button:active{background:#F0F4EE}
+.results .c{color:var(--ink-soft);font-size:.8rem}
+.summary{margin:18px 0 6px;border:3px solid var(--ink)}
+.summary .top{background:var(--ink);color:var(--paper);padding:12px 14px;font-family:'Barlow Condensed';font-weight:800;font-size:1.35rem}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr)}
+.kpi{padding:12px 8px;text-align:center;border-right:1px solid var(--line)}
+.kpi:last-child{border-right:none}
+.kpi b{display:block;font-family:'Barlow Condensed';font-weight:800;font-size:1.7rem;line-height:1.1}
+.kpi span{font-size:.74rem;color:var(--ink-soft)}
+.headline{padding:14px;border-top:2px solid var(--ink);font-size:.98rem}
+.headline b{font-family:'Barlow Condensed';font-size:1.5rem;font-weight:800;color:var(--pitch);padding:0 3px}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:.92rem}
+th{font-family:'Barlow Condensed';font-weight:800;font-size:1rem;text-align:left;border-bottom:2px solid var(--ink);padding:6px 8px}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.freqbar{height:6px;background:var(--pitch);min-width:2px}
+.small{font-size:.8rem;color:var(--ink-soft);margin-top:10px}
+.gobtn{width:100%;margin-top:10px;padding:12px;border:none;background:var(--pitch);color:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.2rem;cursor:pointer;letter-spacing:.02em}
+.gobtn:disabled{background:var(--line);color:var(--ink-soft)}
+@media (prefers-reduced-motion:no-preference){
+  .score.live{animation:bulb 1.6s ease-in-out infinite}
+  @keyframes bulb{50%{opacity:.72}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SOCCER<em>BOOM</em></div>
+    <div class="tag">Scores, stats &amp; scoreline analysis</div>
+    <nav>
+      <button id="tabScores" class="on">Scores</button>
+      <button id="tabAnalysis">Team analysis</button>
+    </nav>
+  </header>
+
+  <section id="viewScores">
+    <div class="bar"><select id="compSel"></select></div>
+    <div class="bar datenav">
+      <button id="dPrev" aria-label="Previous day">‹</button>
+      <div class="day" id="dLabel"></div>
+      <button id="dNext" aria-label="Next day">›</button>
+    </div>
+    <div id="matchList"><div class="spin">Loading…</div></div>
+  </section>
+
+  <section id="viewAnalysis" hidden>
+    <div class="bar" style="flex-direction:column;align-items:stretch;gap:0">
+      <input type="text" id="teamSearch" placeholder="Search a team — e.g. Arsenal" autocomplete="off">
+      <div class="results" id="teamResults" hidden></div>
+    </div>
+    <div class="bar">
+      <select id="depthSel">
+        <option value="50">Last 50 finished matches</option>
+        <option value="100">Last 100 finished matches</option>
+        <option value="200">Last 200 finished matches</option>
+        <option value="300" selected>Last 300 finished matches</option>
+      </select>
+    </div>
+    <button class="gobtn" id="runBtn" disabled>Pick a team first</button>
+    <div id="analysisOut"></div>
+  </section>
+</div>
+
+<div id="modal"><div class="sheet" id="sheetBody"></div></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const API=(path,long)=>fetch('/api/tsa?path='+encodeURIComponent(path)+(long?'&cache=long':''))
+  .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('API error '+r.status));return j;});
+
+/* ---------- tabs ---------- */
+$('tabScores').onclick=()=>{setTab('Scores')};
+$('tabAnalysis').onclick=()=>{setTab('Analysis')};
+function setTab(t){
+  $('viewScores').hidden=t!=='Scores';
+  $('viewAnalysis').hidden=t!=='Analysis';
+  $('tabScores').classList.toggle('on',t==='Scores');
+  $('tabAnalysis').classList.toggle('on',t==='Analysis');
+}
+
+/* ---------- competitions ---------- */
+let compId=localStorage.getItem('sb_comp')||'';
+async function loadComps(){
+  let comps;
+  const cached=JSON.parse(localStorage.getItem('sb_comps')||'null');
+  if(cached&&Date.now()-cached.at<864e5){comps=cached.data;}
+  else{
+    const out=[];let page=1;
+    while(page<=3){ // up to 300 comps
+      const r=await API(`/football/competitions?per_page=100&page=${page}`,true);
+      out.push(...r.data);
+      if(page>=r.meta.total_pages)break;page++;
+    }
+    comps=out;localStorage.setItem('sb_comps',JSON.stringify({at:Date.now(),data:out}));
+  }
+  comps.sort((a,b)=>(a.country||'zz').localeCompare(b.country||'zz')||a.name.localeCompare(b.name));
+  const sel=$('compSel');sel.innerHTML='';
+  comps.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id;o.textContent=(c.country?c.country+' — ':'')+c.name;
+    sel.appendChild(o);
+  });
+  if(!compId){
+    const pl=comps.find(c=>c.name==='Premier League'&&c.country==='England');
+    compId=pl?pl.id:comps[0].id;
+  }
+  sel.value=compId;
+  sel.onchange=()=>{compId=sel.value;localStorage.setItem('sb_comp',compId);loadMatches();};
+}
+
+/* ---------- date nav ---------- */
+let day=new Date();
+const fmt=d=>d.toISOString().slice(0,10);
+function dayLabel(){
+  const today=fmt(new Date());
+  const s=fmt(day);
+  const nice=day.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  $('dLabel').textContent=s===today?'Today, '+nice:nice;
+}
+$('dPrev').onclick=()=>{day.setDate(day.getDate()-1);loadMatches();};
+$('dNext').onclick=()=>{day.setDate(day.getDate()+1);loadMatches();};
+
+/* ---------- scores ---------- */
+let pollTimer=null;
+async function loadMatches(){
+  dayLabel();
+  clearTimeout(pollTimer);
+  const el=$('matchList');el.innerHTML='<div class="spin">Loading…</div>';
+  const d=fmt(day);
+  try{
+    const past=d<fmt(new Date());
+    const r=await API(`/football/matches?competition_id=${compId}&date_from=${d}&date_to=${d}&per_page=100`,past);
+    if(!r.data.length){el.innerHTML='<div class="note">No matches in this competition on this day.<br>Try another day or competition.</div>';return;}
+    r.data.sort((a,b)=>a.utc_date.localeCompare(b.utc_date));
+    el.innerHTML='';
+    let anyLive=false;
+    r.data.forEach(m=>{
+      const fin=m.status==='finished',live=m.status==='live';
+      if(live)anyLive=true;
+      const hs=m.score.home,as=m.score.away;
+      const row=document.createElement('div');row.className='match';
+      const hw=fin&&hs>as, aw=fin&&as>hs;
+      const ko=new Date(m.utc_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      row.innerHTML=
+        `<div class="team h${hw?' win':''}">${esc(m.home_team.name)}</div>`+
+        (fin||live
+          ?`<div class="score${live?' live':''}">${hs} – ${as}</div>`
+          :`<div class="score sched">${m.status==='scheduled'?ko:m.status}</div>`)+
+        `<div class="team${aw?' win':''}">${esc(m.away_team.name)}</div>`+
+        `<div class="mstate">${live?'<span class="livedot">● LIVE</span>':fin?'Full time':''}</div>`;
+      row.onclick=()=>openMatch(m);
+      el.appendChild(row);
+    });
+    if(anyLive)pollTimer=setTimeout(loadMatches,60000);
+  }catch(e){el.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+/* ---------- match detail ---------- */
+async function openMatch(m){
+  const modal=$('modal'),sheet=$('sheetBody');
+  modal.classList.add('open');
+  const fin=m.status==='finished',live=m.status==='live';
+  const scoreTxt=(fin||live)?`${m.score.home} – ${m.score.away}`:new Date(m.utc_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  sheet.innerHTML=`<div class="sheet-head">
+    <button class="sheet-close" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
+    <div class="sheet-teams"><span>${esc(m.home_team.name)}</span><span>${esc(m.away_team.name)}</span></div>
+    <div class="bigscore">${scoreTxt}</div>
+    <div class="sheet-meta" id="sheetMeta">${live?'Live':fin?'Full time':new Date(m.utc_date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+  </div><div id="sheetStats"><div class="spin">Loading stats…</div></div>`;
+  modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open');};
+  try{
+    const det=await API(`/football/matches/${m.id}`,fin);
+    const s=det.data.score||{};
+    const meta=[];
+    if(s.half_time_home!=null)meta.push(`HT ${s.half_time_home}–${s.half_time_away}`);
+    if(det.data.venue)meta.push(esc(det.data.venue.name));
+    if(det.data.referee)meta.push('Ref: '+esc(det.data.referee.name));
+    if(meta.length)$('sheetMeta').innerHTML+= '<br>'+meta.join(' · ');
+  }catch(e){}
+  if(!fin&&!live){$('sheetStats').innerHTML='<div class="note">Stats appear once the match kicks off.</div>';return;}
+  try{
+    const r=await API(`/football/matches/${m.id}${live?'/live-stats':'/stats'}`,fin);
+    const src=live?r.data.stats:(r.data.overview||{});
+    const npx=!live&&r.data.np_expected_goals?{np_expected_goals:r.data.np_expected_goals}:{};
+    const rows=[
+      ['ball_possession','Possession %'],['expected_goals','Expected goals (xG)'],
+      ['np_expected_goals','Non-penalty xG'],['total_shots','Shots'],
+      ['shots_on_target','On target'],['big_chances','Big chances'],
+      ['corner_kicks','Corners'],['fouls','Fouls'],
+      ['yellow_cards','Yellow cards'],['red_cards','Red cards']
+    ];
+    let html='';
+    rows.forEach(([k,lbl])=>{
+      const item=src[k]||npx[k];
+      const v=item&&item.all;
+      if(!v||v.home==null)return;
+      const h=+v.home,a=+v.away,tot=h+a||1;
+      html+=`<div class="statrow">
+        <div class="nums"><span>${h}</span><span>${a}</span></div>
+        <div class="lbl">${lbl}</div>
+        <div class="statbar"><i style="width:${(h/tot*100).toFixed(1)}%"></i><i class="a" style="width:${(a/tot*100).toFixed(1)}%"></i></div>
+      </div>`;
+    });
+    $('sheetStats').innerHTML=html||'<div class="note">No detailed stats for this match.</div>';
+  }catch(e){$('sheetStats').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+/* ---------- team analysis ---------- */
+let pickedTeam=null,searchTimer=null;
+$('teamSearch').oninput=()=>{
+  clearTimeout(searchTimer);
+  const q=$('teamSearch').value.trim();
+  pickedTeam=null;setRun();
+  if(q.length<3){$('teamResults').hidden=true;return;}
+  searchTimer=setTimeout(async()=>{
+    try{
+      const r=await API(`/football/teams?search=${encodeURIComponent(q)}&per_page=10`,true);
+      const box=$('teamResults');box.innerHTML='';
+      r.data.forEach(t=>{
+        const b=document.createElement('button');
+        b.innerHTML=`${esc(t.name)} <span class="c">${esc(t.country||'')}${t.primary_competition?' · '+esc(t.primary_competition.name):''}</span>`;
+        b.onclick=()=>{pickedTeam=t;$('teamSearch').value=t.name;box.hidden=true;setRun();};
+        box.appendChild(b);
+      });
+      box.hidden=!r.data.length;
+    }catch(e){}
+  },350);
+};
+function setRun(){
+  const b=$('runBtn');
+  b.disabled=!pickedTeam;
+  b.textContent=pickedTeam?`Analyse ${pickedTeam.name}`:'Pick a team first';
+}
+$('runBtn').onclick=runAnalysis;
+
+async function runAnalysis(){
+  const n=+$('depthSel').value,t=pickedTeam;
+  const out=$('analysisOut');
+  out.innerHTML='<div class="spin">Pulling match history…</div>';
+  try{
+    let matches=[],page=1;
+    while(matches.length<n&&page<=Math.ceil(n/100)+2){
+      const r=await API(`/football/matches?team_id=${t.id}&status=finished&per_page=100&page=${page}`,true);
+      matches.push(...r.data);
+      if(page>=r.meta.total_pages)break;page++;
+    }
+    matches=matches.filter(m=>m.score&&m.score.home!=null)
+      .sort((a,b)=>b.utc_date.localeCompare(a.utc_date)).slice(0,n);
+    if(!matches.length){out.innerHTML='<div class="note">No finished matches found for this team.</div>';return;}
+
+    let W=0,D=0,L=0,gfT=0,gaT=0,gfW=0,gaW=0;
+    const freqAll={},freqWin={};
+    matches.forEach(m=>{
+      const home=m.home_team.id===t.id;
+      const gf=home?m.score.home:m.score.away;
+      const ga=home?m.score.away:m.score.home;
+      gfT+=gf;gaT+=ga;
+      const key=gf+'–'+ga;
+      freqAll[key]=(freqAll[key]||0)+1;
+      if(gf>ga){W++;gfW+=gf;gaW+=ga;freqWin[key]=(freqWin[key]||0)+1;}
+      else if(gf<ga)L++;else D++;
+    });
+    const N=matches.length;
+    const topWin=Object.entries(freqWin).sort((a,b)=>b[1]-a[1]);
+    const topAll=Object.entries(freqAll).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxC=topAll[0]?topAll[0][1]:1;
+    const oldest=new Date(matches[N-1].utc_date).toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+    const newest=new Date(matches[0].utc_date).toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+
+    out.innerHTML=`
+      <div class="summary">
+        <div class="top">${esc(t.name)} — last ${N} finished matches</div>
+        <div class="kpis">
+          <div class="kpi"><b>${W}-${D}-${L}</b><span>W-D-L</span></div>
+          <div class="kpi"><b>${(gfT/N).toFixed(2)}</b><span>Goals for / game</span></div>
+          <div class="kpi"><b>${(gaT/N).toFixed(2)}</b><span>Goals against / game</span></div>
+        </div>
+        <div class="headline">
+          ${W?`When they win, the most common score is <b>${topWin[0][0]}</b> (${topWin[0][1]}× — ${(topWin[0][1]/W*100).toFixed(0)}% of wins). Average winning score: <b>${(gfW/W).toFixed(1)}–${(gaW/W).toFixed(1)}</b>.`:'No wins in this sample.'}
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Score</th><th class="n">Count</th><th class="n">%</th><th style="width:34%"></th></tr></thead>
+        <tbody>${topAll.map(([k,c])=>`<tr><td><b>${k}</b></td><td class="n">${c}</td><td class="n">${(c/N*100).toFixed(1)}%</td><td><div class="freqbar" style="width:${(c/maxC*100).toFixed(0)}%"></div></td></tr>`).join('')}</tbody>
+      </table>
+      ${W?`<table>
+        <thead><tr><th>Score in wins</th><th class="n">Count</th><th class="n">% of wins</th><th style="width:34%"></th></tr></thead>
+        <tbody>${topWin.slice(0,6).map(([k,c])=>`<tr><td><b>${k}</b></td><td class="n">${c}</td><td class="n">${(c/W*100).toFixed(1)}%</td><td><div class="freqbar" style="width:${(c/topWin[0][1]*100).toFixed(0)}%"></div></td></tr>`).join('')}</tbody>
+      </table>`:''}
+      <div class="small">Sample: ${oldest} → ${newest}, all competitions. Scores are 90-minute results (cup ties decided in extra time or on penalties count as their 90-minute score, matching correct-score market rules).</div>`;
+  }catch(e){out.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------- boot ---------- */
+(async()=>{
+  try{await loadComps();await loadMatches();}
+  catch(e){$('matchList').innerHTML=`<div class="err">${esc(e.message)}<br><br>If this says the key is not set, add THESTATSAPI_KEY in Vercel → Settings → Environment Variables, then redeploy.</div>`;}
+})();
+</script>
+</body>
+</html>
