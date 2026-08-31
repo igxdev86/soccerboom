@@ -326,8 +326,8 @@ async function runAnalysis(){
     }
     const countries=[...new Set(lastRows.map(x=>x.country).filter(Boolean))].sort();
     const cs=$('countrySel'),keep=cs.value;
-    cs.innerHTML='<option value="">All countries</option>'+countries.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    cs.value=countries.includes(keep)?keep:'';
+    cs.innerHTML='<option value="">All countries</option><option value="__uk">UK (Eng, Sco, Wal, NI)</option>'+countries.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    cs.value=(keep==='__uk'||countries.includes(keep))?keep:'__uk';
     window._meta=j.meta;
     renderRows();
   }catch(e){out.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
@@ -336,7 +336,8 @@ async function runAnalysis(){
 function renderRows(){
   if(!pickedScore||!lastRows.length)return;
   const [GF,GA]=pickedScore,key=GF+'-'+GA,c=$('countrySel').value;
-  const rows=c?lastRows.filter(x=>x.country===c):lastRows;
+  const UK=['England','Scotland','Wales','Northern Ireland'];
+  const rows=c==='__uk'?lastRows.filter(x=>UK.includes(x.country)):c?lastRows.filter(x=>x.country===c):lastRows;
   const meta=window._meta||{};
   const synced=meta.last_run?new Date(meta.last_run).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
   $('analysisOut').innerHTML=`
