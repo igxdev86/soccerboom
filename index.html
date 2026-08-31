@@ -94,6 +94,14 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .small{font-size:.8rem;color:var(--ink-soft);margin-top:10px}
 .gobtn{width:100%;margin-top:10px;padding:12px;border:none;background:var(--pitch);color:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.2rem;cursor:pointer;letter-spacing:.02em}
 .gobtn:disabled{background:var(--line);color:var(--ink-soft)}
+.gridlbl{font-size:.85rem;color:var(--ink-soft);margin:4px 0 8px}
+.scoregrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scoregrid button{padding:11px 0;border:2px solid var(--ink);background:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;cursor:pointer;color:var(--ink)}
+.scoregrid button.on{background:var(--pitch);border-color:var(--pitch);color:#fff}
+tr.teamrow{cursor:pointer}
+tr.teamrow td:first-child{font-weight:500}
+tr.hit td:first-child::after{content:" ●";color:var(--pitch)}
+tr.expand td{background:#F0F4EE;font-size:.86rem;padding:10px 12px}
 @media (prefers-reduced-motion:no-preference){
   .score.live{animation:bulb 1.6s ease-in-out infinite}
   @keyframes bulb{50%{opacity:.72}}
@@ -122,19 +130,17 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   </section>
 
   <section id="viewAnalysis" hidden>
-    <div class="bar" style="flex-direction:column;align-items:stretch;gap:0">
-      <input type="text" id="teamSearch" placeholder="Search a team — e.g. Arsenal" autocomplete="off">
-      <div class="results" id="teamResults" hidden></div>
-    </div>
+    <div class="bar"><select id="aCompSel"></select></div>
     <div class="bar">
-      <select id="depthSel">
-        <option value="50">Last 50 finished matches</option>
-        <option value="100">Last 100 finished matches</option>
-        <option value="200">Last 200 finished matches</option>
-        <option value="300" selected>Last 300 finished matches</option>
+      <select id="aDepthSel">
+        <option value="1">This season</option>
+        <option value="2">Last 2 seasons</option>
+        <option value="3" selected>Last 3 seasons</option>
       </select>
     </div>
-    <button class="gobtn" id="runBtn" disabled>Pick a team first</button>
+    <div class="gridlbl">Tap a score (goals for – goals against)</div>
+    <div class="scoregrid" id="scoreGrid"></div>
+    <button class="gobtn" id="runBtn" disabled>Pick a score first</button>
     <div id="analysisOut"></div>
   </section>
 </div>
@@ -185,6 +191,7 @@ async function loadComps(){
   }
   sel.value=compId;
   sel.onchange=()=>{compId=sel.value;localStorage.setItem('sb_comp',compId);loadMatches();};
+  const asel=$('aCompSel');asel.innerHTML=sel.innerHTML;asel.value=compId;
 }
 
 /* ---------- date nav ---------- */
@@ -284,90 +291,96 @@ async function openMatch(m){
   }catch(e){$('sheetStats').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
 }
 
-/* ---------- team analysis ---------- */
-let pickedTeam=null,searchTimer=null;
-$('teamSearch').oninput=()=>{
-  clearTimeout(searchTimer);
-  const q=$('teamSearch').value.trim();
-  pickedTeam=null;setRun();
-  if(q.length<3){$('teamResults').hidden=true;return;}
-  searchTimer=setTimeout(async()=>{
-    try{
-      const r=await API(`/football/teams?search=${encodeURIComponent(q)}&per_page=10`,true);
-      const box=$('teamResults');box.innerHTML='';
-      r.data.forEach(t=>{
-        const b=document.createElement('button');
-        b.innerHTML=`${esc(t.name)} <span class="c">${esc(t.country||'')}${t.primary_competition?' · '+esc(t.primary_competition.name):''}</span>`;
-        b.onclick=()=>{pickedTeam=t;$('teamSearch').value=t.name;box.hidden=true;setRun();};
-        box.appendChild(b);
-      });
-      box.hidden=!r.data.length;
-    }catch(e){}
-  },350);
-};
-function setRun(){
-  const b=$('runBtn');
-  b.disabled=!pickedTeam;
-  b.textContent=pickedTeam?`Analyse ${pickedTeam.name}`:'Pick a team first';
-}
+/* ---------- score-first analysis ---------- */
+let pickedScore=null;
+(function buildGrid(){
+  const g=$('scoreGrid');
+  for(let gf=0;gf<=4;gf++)for(let ga=0;ga<=4;ga++){
+    const b=document.createElement('button');
+    b.textContent=gf+'\u2013'+ga;
+    b.onclick=()=>{
+      pickedScore=[gf,ga];
+      [...g.children].forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      $('runBtn').disabled=false;
+      $('runBtn').textContent='Find teams that go '+gf+'\u2013'+ga;
+    };
+    g.appendChild(b);
+  }
+})();
 $('runBtn').onclick=runAnalysis;
 
+async function seasonMatches(comp,seasonId,isCurrent){
+  const ck='sb_m_'+comp+'_'+seasonId;
+  const cached=JSON.parse(localStorage.getItem(ck)||'null');
+  if(cached&&(!isCurrent||Date.now()-cached.at<36e5))return cached.d;
+  let all=[],page=1;
+  while(page<=8){
+    const r=await API(`/football/matches?competition_id=${comp}&season_id=${seasonId}&status=finished&per_page=100&page=${page}`,!isCurrent);
+    all.push(...r.data);
+    if(page>=r.meta.total_pages)break;page++;
+  }
+  const d=all.filter(m=>m.score&&m.score.home!=null)
+    .map(m=>[m.home_team.id,m.home_team.name,m.away_team.id,m.away_team.name,m.score.home,m.score.away]);
+  try{localStorage.setItem(ck,JSON.stringify({at:Date.now(),d}));}catch(e){}
+  return d;
+}
+
+let lastTeams=null;
 async function runAnalysis(){
-  const n=+$('depthSel').value,t=pickedTeam;
+  const comp=$('aCompSel').value,nSeasons=+$('aDepthSel').value,[GF,GA]=pickedScore;
   const out=$('analysisOut');
-  out.innerHTML='<div class="spin">Pulling match history…</div>';
+  out.innerHTML='<div class="spin">Crunching whole-league history\u2026</div>';
   try{
-    let matches=[],page=1;
-    while(matches.length<n&&page<=Math.ceil(n/100)+2){
-      const r=await API(`/football/matches?team_id=${t.id}&status=finished&per_page=100&page=${page}`,true);
-      matches.push(...r.data);
-      if(page>=r.meta.total_pages)break;page++;
-    }
-    matches=matches.filter(m=>m.score&&m.score.home!=null)
-      .sort((a,b)=>b.utc_date.localeCompare(a.utc_date)).slice(0,n);
-    if(!matches.length){out.innerHTML='<div class="note">No finished matches found for this team.</div>';return;}
+    const sr=await API(`/football/competitions/${comp}/seasons`,true);
+    const seasons=sr.data.slice(0,nSeasons);
+    if(!seasons.length){out.innerHTML='<div class="note">No seasons found for this competition.</div>';return;}
+    let rows=[];
+    for(const s of seasons)rows.push(...await seasonMatches(comp,s.id,!!s.is_current));
+    if(!rows.length){out.innerHTML='<div class="note">No finished matches in this sample yet.</div>';return;}
 
-    let W=0,D=0,L=0,gfT=0,gaT=0,gfW=0,gaW=0;
-    const freqAll={},freqWin={};
-    matches.forEach(m=>{
-      const home=m.home_team.id===t.id;
-      const gf=home?m.score.home:m.score.away;
-      const ga=home?m.score.away:m.score.home;
-      gfT+=gf;gaT+=ga;
-      const key=gf+'–'+ga;
-      freqAll[key]=(freqAll[key]||0)+1;
-      if(gf>ga){W++;gfW+=gf;gaW+=ga;freqWin[key]=(freqWin[key]||0)+1;}
-      else if(gf<ga)L++;else D++;
+    const teams={};
+    const T=(id,name)=>teams[id]||(teams[id]={name,g:0,hit:0,gf:0,ga:0,w:0,d:0,l:0,wgf:0,wga:0,freq:{}});
+    rows.forEach(([hid,hn,aid,an,hs,as])=>{
+      [[hid,hn,hs,as],[aid,an,as,hs]].forEach(([id,name,f,a])=>{
+        const t=T(id,name);t.g++;t.gf+=f;t.ga+=a;
+        const k=f+'\u2013'+a;t.freq[k]=(t.freq[k]||0)+1;
+        if(f===GF&&a===GA)t.hit++;
+        if(f>a){t.w++;t.wgf+=f;t.wga+=a;}else if(f<a)t.l++;else t.d++;
+      });
     });
-    const N=matches.length;
-    const topWin=Object.entries(freqWin).sort((a,b)=>b[1]-a[1]);
-    const topAll=Object.entries(freqAll).sort((a,b)=>b[1]-a[1]).slice(0,8);
-    const maxC=topAll[0]?topAll[0][1]:1;
-    const oldest=new Date(matches[N-1].utc_date).toLocaleDateString('en-GB',{month:'short',year:'numeric'});
-    const newest=new Date(matches[0].utc_date).toLocaleDateString('en-GB',{month:'short',year:'numeric'});
-
+    lastTeams=teams;
+    const ranked=Object.entries(teams).filter(([,t])=>t.g>=5)
+      .sort((a,b)=>b[1].hit/b[1].g-a[1].hit/a[1].g||b[1].hit-a[1].hit);
+    const modal=t=>Object.entries(t.freq).sort((a,b)=>b[1]-a[1])[0][0];
+    const label=seasons.map(s=>s.year).reverse().join(', ');
     out.innerHTML=`
       <div class="summary">
-        <div class="top">${esc(t.name)} — last ${N} finished matches</div>
-        <div class="kpis">
-          <div class="kpi"><b>${W}-${D}-${L}</b><span>W-D-L</span></div>
-          <div class="kpi"><b>${(gfT/N).toFixed(2)}</b><span>Goals for / game</span></div>
-          <div class="kpi"><b>${(gaT/N).toFixed(2)}</b><span>Goals against / game</span></div>
-        </div>
-        <div class="headline">
-          ${W?`When they win, the most common score is <b>${topWin[0][0]}</b> (${topWin[0][1]}× — ${(topWin[0][1]/W*100).toFixed(0)}% of wins). Average winning score: <b>${(gfW/W).toFixed(1)}–${(gaW/W).toFixed(1)}</b>.`:'No wins in this sample.'}
-        </div>
+        <div class="top">Who goes ${GF}\u2013${GA}? \u00b7 ${esc($('aCompSel').selectedOptions[0].textContent)}</div>
+        <div class="headline">${rows.length} matches across ${seasons.length} season${seasons.length>1?'s':''} (${esc(label)}). \u25cf marks teams whose most common score IS ${GF}\u2013${GA}. Tap a team for their full breakdown.</div>
       </div>
       <table>
-        <thead><tr><th>Score</th><th class="n">Count</th><th class="n">%</th><th style="width:34%"></th></tr></thead>
-        <tbody>${topAll.map(([k,c])=>`<tr><td><b>${k}</b></td><td class="n">${c}</td><td class="n">${(c/N*100).toFixed(1)}%</td><td><div class="freqbar" style="width:${(c/maxC*100).toFixed(0)}%"></div></td></tr>`).join('')}</tbody>
+        <thead><tr><th>Team</th><th class="n">${GF}\u2013${GA}s</th><th class="n">%</th><th class="n">Usual score</th></tr></thead>
+        <tbody>${ranked.map(([id,t])=>{
+          const mo=modal(t);
+          return `<tr class="teamrow${mo===GF+'\u2013'+GA?' hit':''}" data-id="${id}"><td>${esc(t.name)}</td><td class="n">${t.hit}</td><td class="n">${(t.hit/t.g*100).toFixed(1)}%</td><td class="n">${mo}</td></tr>`;
+        }).join('')}</tbody>
       </table>
-      ${W?`<table>
-        <thead><tr><th>Score in wins</th><th class="n">Count</th><th class="n">% of wins</th><th style="width:34%"></th></tr></thead>
-        <tbody>${topWin.slice(0,6).map(([k,c])=>`<tr><td><b>${k}</b></td><td class="n">${c}</td><td class="n">${(c/W*100).toFixed(1)}%</td><td><div class="freqbar" style="width:${(c/topWin[0][1]*100).toFixed(0)}%"></div></td></tr>`).join('')}</tbody>
-      </table>`:''}
-      <div class="small">Sample: ${oldest} → ${newest}, all competitions. Scores are 90-minute results (cup ties decided in extra time or on penalties count as their 90-minute score, matching correct-score market rules).</div>`;
+      <div class="small">% = share of that team's matches ending exactly ${GF}\u2013${GA} from their perspective, all venues. 90-minute scores.</div>`;
+    out.querySelectorAll('tr.teamrow').forEach(tr=>tr.onclick=()=>expandTeam(tr));
   }catch(e){out.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+function expandTeam(tr){
+  const open=tr.nextElementSibling&&tr.nextElementSibling.classList.contains('expand');
+  document.querySelectorAll('tr.expand').forEach(x=>x.remove());
+  if(open)return;
+  const t=lastTeams[tr.dataset.id];
+  const top=Object.entries(t.freq).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([k,c])=>`${k} (${c}\u00d7)`).join(', ');
+  const ex=document.createElement('tr');ex.className='expand';
+  ex.innerHTML=`<td colspan="4"><b>${esc(t.name)}</b>: ${t.w}-${t.d}-${t.l} in ${t.g} \u00b7 ${(t.gf/t.g).toFixed(2)} for / ${(t.ga/t.g).toFixed(2)} against per game${t.w?` \u00b7 avg winning score ${(t.wgf/t.w).toFixed(1)}\u2013${(t.wga/t.w).toFixed(1)}`:''}<br>Top scores: ${top}</td>`;
+  tr.after(ex);
 }
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
