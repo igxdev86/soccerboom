@@ -94,6 +94,17 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .small{font-size:.8rem;color:var(--ink-soft);margin-top:10px}
 .gobtn{width:100%;margin-top:10px;padding:12px;border:none;background:var(--pitch);color:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.2rem;cursor:pointer;letter-spacing:.02em}
 .gobtn:disabled{background:var(--line);color:var(--ink-soft)}
+.pred{padding:12px 4px;border-bottom:1px solid var(--line)}
+.pred .teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.pred .teams .t{font-weight:500;font-size:.95rem}
+.pred .teams .t.h{text-align:right}
+.pred .exp{font-family:'Barlow Condensed';font-weight:800;font-size:1.9rem;line-height:1;background:var(--pitch);color:#fff;padding:5px 8px;min-width:78px;text-align:center}
+.pred .pct{font-family:'Barlow Condensed';font-weight:800;font-size:1.05rem;color:var(--pitch);text-align:center;margin-top:2px}
+.pred .meta{font-size:.78rem;color:var(--ink-soft);text-align:center;margin-top:5px}
+.pred .meta b{color:var(--ink);font-weight:600}
+.pred .comp{font-size:.72rem;color:var(--ink-soft);text-align:center}
+.pred .done{font-size:.78rem;text-align:center;margin-top:4px;font-weight:700}
+.pred .done.hit{color:var(--pitch)}
 .gridlbl{font-size:.85rem;color:var(--ink-soft);margin:4px 0 8px}
 .scoregrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .scoregrid button{padding:11px 0;border:2px solid var(--ink);background:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;cursor:pointer;color:var(--ink)}
@@ -122,6 +133,7 @@ tr.expand td{background:#F0F4EE;font-size:.86rem;padding:10px 12px}
     <div class="tag">Scores, stats &amp; scoreline analysis</div>
     <nav>
       <button id="tabScores" class="on">Scores</button>
+      <button id="tabPredict">Predictions</button>
       <button id="tabAnalysis">Team analysis</button>
     </nav>
   </header>
@@ -134,6 +146,16 @@ tr.expand td{background:#F0F4EE;font-size:.86rem;padding:10px 12px}
       <button id="dNext" aria-label="Next day">›</button>
     </div>
     <div id="matchList"><div class="spin">Loading…</div></div>
+  </section>
+
+  <section id="viewPredict" hidden>
+    <div class="bar datenav">
+      <button id="pPrev" aria-label="Previous day">‹</button>
+      <div class="day" id="pLabel"></div>
+      <button id="pNext" aria-label="Next day">›</button>
+    </div>
+    <div class="bar"><select id="pCountry"><option value="__uk">UK (Eng, Sco, Wal, NI)</option><option value="">All countries</option></select></div>
+    <div id="predList"><div class="note">Pick a day.</div></div>
   </section>
 
   <section id="viewAnalysis" hidden>
@@ -163,11 +185,54 @@ const API=(path,long)=>fetch('/api/tsa?path='+encodeURIComponent(path)+(long?'&c
 /* ---------- tabs ---------- */
 $('tabScores').onclick=()=>{setTab('Scores')};
 $('tabAnalysis').onclick=()=>{setTab('Analysis')};
+$('tabPredict').onclick=()=>{setTab('Predict');if(!$('predList').dataset.loaded)loadPredictions();};
 function setTab(t){
   $('viewScores').hidden=t!=='Scores';
+  $('viewPredict').hidden=t!=='Predict';
   $('viewAnalysis').hidden=t!=='Analysis';
   $('tabScores').classList.toggle('on',t==='Scores');
+  $('tabPredict').classList.toggle('on',t==='Predict');
   $('tabAnalysis').classList.toggle('on',t==='Analysis');
+}
+
+/* ---------- predictions ---------- */
+let pDay=new Date(),pData=[];
+$('pPrev').onclick=()=>{pDay.setDate(pDay.getDate()-1);loadPredictions();};
+$('pNext').onclick=()=>{pDay.setDate(pDay.getDate()+1);loadPredictions();};
+$('pCountry').onchange=renderPredictions;
+async function loadPredictions(){
+  const d=fmt(pDay),today=fmt(new Date());
+  $('pLabel').textContent=(d===today?'Today, ':'')+pDay.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  const el=$('predList');el.innerHTML='<div class="spin">Working out every game\u2026</div>';el.dataset.loaded=1;
+  try{
+    const r=await fetch('/api/predict?date='+d);const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error '+r.status);
+    pData=j.fixtures;
+    const sel=$('pCountry'),keep=sel.value;
+    const cs=[...new Set(pData.map(f=>f.country).filter(Boolean))].sort();
+    sel.innerHTML='<option value="__uk">UK (Eng, Sco, Wal, NI)</option><option value="">All countries</option>'+cs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    sel.value=(keep===''||keep==='__uk'||cs.includes(keep))?keep:'__uk';
+    renderPredictions();
+  }catch(e){el.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+function renderPredictions(){
+  const UK=['England','Scotland','Wales','Northern Ireland'],c=$('pCountry').value;
+  const rows=c==='__uk'?pData.filter(f=>UK.includes(f.country)):c?pData.filter(f=>f.country===c):pData;
+  const el=$('predList');
+  if(!rows.length){el.innerHTML='<div class="note">No fixtures with enough history for this day and filter.</div>';return;}
+  el.innerHTML=rows.map(f=>{
+    const ko=new Date(f.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    if(!f.likely)return `<div class="pred"><div class="comp">${esc(f.competition)} \u00b7 ${ko}</div><div class="teams"><div class="t h">${esc(f.home)}</div><div class="exp" style="background:var(--line);color:var(--ink-soft);font-size:1rem">?</div><div class="t">${esc(f.away)}</div></div><div class="meta">${esc(f.note||'')}</div></div>`;
+    const top=f.likely[0],others=f.likely.slice(1).map(x=>`${x.score} <b>${x.pct}%</b>`).join(' \u00b7 ');
+    const done=f.result?`<div class="done${f.result===top.score?' hit':''}">${f.status==='finished'?'Result '+f.result+(f.result===top.score?' \u2014 nailed it':''):'Live '+f.result}</div>`:'';
+    return `<div class="pred">
+      <div class="comp">${esc(f.competition)} \u00b7 ${ko}</div>
+      <div class="teams"><div class="t h">${esc(f.home)}</div><div><div class="exp">${top.score}</div><div class="pct">${top.pct}% likely</div></div><div class="t">${esc(f.away)}</div></div>
+      <div class="meta">Next most likely: ${others}</div>
+      <div class="meta">Home <b>${f.home_win}%</b> \u00b7 Draw <b>${f.draw}%</b> \u00b7 Away <b>${f.away_win}%</b> \u00b7 Over 2.5 <b>${f.over25}%</b> \u00b7 BTTS <b>${f.btts}%</b></div>
+      ${done}
+    </div>`;
+  }).join('')+'<div class="small">Most likely 90-minute score from a Poisson goals model: each side\u2019s recent home/away attack v the other\u2019s defence, recent games weighted heavier. Even the top score is usually only 10\u201318% \u2014 that\u2019s football.</div>';
 }
 
 /* ---------- competitions ---------- */
