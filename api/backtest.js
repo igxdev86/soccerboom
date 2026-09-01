@@ -27,6 +27,9 @@ module.exports = async (req, res) => {
     ]);
     const comps = {}; (await cR.json()).forEach(c => comps[c.id] = c.country);
     let matches = await mR.json();
+    const oddsR = await fetch(SB + `/rest/v1/odds?select=match_id,data&limit=5000`, { headers: sbH });
+    const odds = {}; (oddsR.ok ? await oddsR.json() : []).forEach(o => odds[o.match_id] = o.data || {});
+    const R = { cs: { bets: 0, ret: 0 }, csv: { bets: 0, ret: 0 }, res: { bets: 0, ret: 0 }, est: { bets: 0, ret: 0 } };
     if (ukOnly) matches = matches.filter(m => UK.includes(comps[m.competition_id]));
     const byDay = {};
     matches.forEach(m => { const d = m.utc_date.slice(0, 10); (byDay[d] = byDay[d] || []).push(m); });
@@ -54,6 +57,17 @@ module.exports = async (req, res) => {
         if (actual === 'H') S.naive_home++;
         if (m.home_goals === 1 && m.away_goals === 1) S.naive_11++;
         S.top_pct_sum += p.p;
+        // ROI: £1 on the model's top score / result pick.
+        const od = odds[m.id];
+        const est = 0.75 / p.p; // estimated CS price: fair odds less ~25% correct-score margin
+        R.est.bets++; if (exactHit) R.est.ret += est;
+        if (od && Object.keys(od).length) {
+          const cs = od['CS_' + p.h + '-' + p.a];
+          if (cs) { R.cs.bets++; if (exactHit) R.cs.ret += cs.o;
+            if (p.p * cs.o > 1.05) { R.csv.bets++; if (exactHit) R.csv.ret += cs.o; } }
+          const rp = od[pick];
+          if (rp) { R.res.bets++; if (pick === actual) R.res.ret += rp.o; }
+        }
         const b = bucket(p.p); S.buckets[b] = S.buckets[b] || { n: 0, hit: 0 }; S.buckets[b].n++; if (exactHit) S.buckets[b].hit++;
         if (Math.abs(p.o25 - .5) >= .1) { S.o25_n++; if ((p.o25 > .5) === (m.home_goals + m.away_goals > 2.5)) S.o25_hit++; }
         if (Math.abs(p.btts - .5) >= .1) { S.btts_n++; if ((p.btts > .5) === (m.home_goals > 0 && m.away_goals > 0)) S.btts_hit++; }
@@ -68,6 +82,12 @@ module.exports = async (req, res) => {
       match_result: { hits: S.result, pct: pct(S.result, S.n), always_home_pct: pct(S.naive_home, S.n) },
       over_under_25: { confident_calls: S.o25_n, pct: pct(S.o25_hit, S.o25_n) },
       btts: { confident_calls: S.btts_n, pct: pct(S.btts_hit, S.btts_n) },
+      roi_per_pound: {
+        correct_score_real: { bets: R.cs.bets, returned: +R.cs.ret.toFixed(2), roi_pct: R.cs.bets ? +((R.cs.ret / R.cs.bets - 1) * 100).toFixed(1) : null },
+        correct_score_value_only: { bets: R.csv.bets, returned: +R.csv.ret.toFixed(2), roi_pct: R.csv.bets ? +((R.csv.ret / R.csv.bets - 1) * 100).toFixed(1) : null },
+        match_result_real: { bets: R.res.bets, returned: +R.res.ret.toFixed(2), roi_pct: R.res.bets ? +((R.res.ret / R.res.bets - 1) * 100).toFixed(1) : null },
+        correct_score_estimated: { bets: R.est.bets, returned: +R.est.ret.toFixed(2), roi_pct: R.est.bets ? +((R.est.ret / R.est.bets - 1) * 100).toFixed(1) : null }
+      },
       calibration: Object.fromEntries(Object.entries(S.buckets).map(([k, v]) => [k, { games: v.n, hit_pct: pct(v.hit, v.n) }])),
       daily
     });
