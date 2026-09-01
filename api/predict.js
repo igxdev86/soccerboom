@@ -75,16 +75,18 @@ module.exports = async (req, res) => {
         result: m.score && m.score.home != null ? m.score.home + '–' + m.score.away : null };
       const p = H && A ? predict(H, A) : null;
       if (!p) return { ...base, note: 'Not enough history for one side' };
-      const od = odds[m.id] && odds[m.id].data;
-      if (od) {
-        const top = p.pick, cs = od['CS_' + top.score.replace('–', '-')];
+      const raw = odds[m.id] && odds[m.id].data;
+      const b365 = raw && raw.books && raw.books.bet365;
+      if (b365) {
+        const top = p.pick, cs = b365['CS_' + top.score.replace('–', '-')];
         p.prices = {
-          top_score: cs ? { odds: cs.o, book: cs.b, implied: +(100 / cs.o).toFixed(1), value: top.pct / 100 * cs.o > 1.05 } : null,
-          home: od.H ? od.H.o : null, draw: od.D ? od.D.o : null, away: od.A ? od.A.o : null,
-          over25: od.O25 ? od.O25.o : null, btts: od.BTTS_Y ? od.BTTS_Y.o : null,
+          book: 'Bet365',
+          top_score: cs ? { odds: cs, book: 'Bet365', implied: +(100 / cs).toFixed(1), value: top.pct / 100 * cs > 1.05 } : null,
+          home: b365.H || null, draw: b365.D || null, away: b365.A || null,
+          over25: b365.O25 || null, btts: b365.BTTS_Y || null,
           captured: odds[m.id].captured_at
         };
-      }
+      } else if (raw) p.prices = { book: 'Bet365', top_score: null, pending: true };
       return { ...base, ...p };
     }).filter(f => f.competition) // only leagues we track
       .sort((a, b) => (a.country || 'zz').localeCompare(b.country || 'zz') || a.kickoff.localeCompare(b.kickoff));
