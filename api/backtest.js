@@ -58,7 +58,8 @@ module.exports = async (req, res) => {
         if (m.home_goals === 1 && m.away_goals === 1) S.naive_11++;
         S.top_pct_sum += p.p;
         // ROI: £1 on the model's top score / result pick.
-        const od = odds[m.id];
+        const od = odds[m.id] && odds[m.id].books && odds[m.id].books.bet365
+          ? Object.fromEntries(Object.entries(odds[m.id].books.bet365).map(([k, o]) => [k, { o }])) : null;
         const est = 0.75 / p.p; // estimated CS price: fair odds less ~25% correct-score margin
         R.est.bets++; if (exactHit) R.est.ret += est;
         if (od && Object.keys(od).length) {
