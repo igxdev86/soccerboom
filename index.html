@@ -214,6 +214,13 @@ $('btBtn').onclick=async()=>{
       </div>
       <div class="headline">Always guessing 1\u20131 would score ${j.exact_score.always_1_1_pct}% on exact score. BTTS calls right ${j.btts.pct==null?'\u2013':j.btts.pct+'%'} of ${j.btts.confident_calls}. ${j.skipped_no_history} games skipped for thin history.</div>
     </div>
+    ${(()=>{const r=j.roi_per_pound,f=x=>x.bets?`${x.bets} bets \u00b7 \u00a3${x.returned} back \u00b7 <b>${x.roi_pct>0?'+':''}${x.roi_pct}%</b>`:'no priced games yet';
+      return `<table><thead><tr><th>\u00a31 a game on\u2026</th><th>Return</th></tr></thead><tbody>
+      <tr><td>Top score, real prices</td><td>${f(r.correct_score_real)}</td></tr>
+      <tr><td>Top score, only when price beats model</td><td>${f(r.correct_score_value_only)}</td></tr>
+      <tr><td>Result pick, real prices</td><td>${f(r.match_result_real)}</td></tr>
+      <tr><td>Top score, estimated prices</td><td>${f(r.correct_score_estimated)}</td></tr></tbody></table>
+      <div class="small">Real = Bet365/Pinnacle/Betfair/Paddy Power prices captured by the odds sync. Estimated = fair odds less a 25% correct-score margin \u2014 a rough stand-in, not a market.</div>`;})()}
     <table><thead><tr><th>When the model said</th><th class="n">Games</th><th class="n">Actually hit</th></tr></thead>
     <tbody>${cal.map(([k,v])=>`<tr><td>${k} likely</td><td class="n">${v.games}</td><td class="n">${v.hit_pct==null?'\u2013':v.hit_pct+'%'}</td></tr>`).join('')}</tbody></table>
     <div class="small">Every game predicted using only matches played before that day \u2014 no peeking. The calibration table is the one to trust: if "12-15% likely" games hit about 12-15% of the time, the percentages mean what they say.</div>`;
