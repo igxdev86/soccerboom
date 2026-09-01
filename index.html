@@ -105,6 +105,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .pred .comp{font-size:.72rem;color:var(--ink-soft);text-align:center}
 .pred .done{font-size:.78rem;text-align:center;margin-top:4px;font-weight:700}
 .pred .done.hit{color:var(--pitch)}
+.pred .price{font-size:.8rem;text-align:center;margin-top:5px}
+.pred .price .v{background:var(--bulb);padding:1px 6px;font-weight:700}
 .gridlbl{font-size:.85rem;color:var(--ink-soft);margin:4px 0 8px}
 .scoregrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .scoregrid button{padding:11px 0;border:2px solid var(--ink);background:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;cursor:pointer;color:var(--ink)}
@@ -261,7 +263,8 @@ function renderPredictions(){
       <div class="comp">${esc(f.competition)} \u00b7 ${ko}</div>
       <div class="teams"><div class="t h">${esc(f.home)}</div><div><div class="exp">${top.score}</div><div class="pct">${top.pct}% likely</div></div><div class="t">${esc(f.away)}</div></div>
       <div class="meta">Next most likely: ${others}</div>
-      <div class="meta">Home <b>${f.home_win}%</b> \u00b7 Draw <b>${f.draw}%</b> \u00b7 Away <b>${f.away_win}%</b> \u00b7 Over 2.5 <b>${f.over25}%</b> \u00b7 BTTS <b>${f.btts}%</b></div>
+      <div class="meta">Home <b>${f.home_win}%</b>${f.prices&&f.prices.home?' ('+f.prices.home+')':''} \u00b7 Draw <b>${f.draw}%</b>${f.prices&&f.prices.draw?' ('+f.prices.draw+')':''} \u00b7 Away <b>${f.away_win}%</b>${f.prices&&f.prices.away?' ('+f.prices.away+')':''} \u00b7 Over 2.5 <b>${f.over25}%</b>${f.prices&&f.prices.over25?' ('+f.prices.over25+')':''} \u00b7 BTTS <b>${f.btts}%</b>${f.prices&&f.prices.btts?' ('+f.prices.btts+')':''}</div>
+      ${f.prices&&f.prices.top_score?`<div class="price">${top.score} best price <b>${f.prices.top_score.odds}</b> ${esc(f.prices.top_score.book)} (implies ${f.prices.top_score.implied}%) ${f.prices.top_score.value?'<span class="v">VALUE</span>':''}</div>`:f.prices?'<div class="price fx">No correct-score price captured for this game</div>':''}
       ${done}
     </div>`;
   }).join('')+'<div class="small">Most likely 90-minute score from a Poisson goals model: each side\u2019s recent home/away attack v the other\u2019s defence, recent games weighted heavier. Even the top score is usually only 10\u201318% \u2014 that\u2019s football.</div>';
