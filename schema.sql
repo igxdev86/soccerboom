@@ -126,3 +126,10 @@ select team_id,
   round(sum(ga*wt) filter (where not h) / nullif(sum(wt) filter (where not h),0), 3)
 from w group by team_id;
 $$;
+
+-- v6: captured bookmaker prices (UK matches) for ROI backtesting.
+create table if not exists odds (
+  match_id text primary key,
+  captured_at timestamptz default now(),
+  data jsonb
+);
