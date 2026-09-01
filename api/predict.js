@@ -26,7 +26,13 @@ function predict(H, A) {
   }
   grid.sort((x, y) => y.p - x.p);
   const pct = p => +(p * 100).toFixed(1);
+  const outcome = pH >= pD && pH >= pA ? 'home' : pA >= pD ? 'away' : 'draw';
+  const inOutcome = grid.filter(g => outcome === 'home' ? g.h > g.a : outcome === 'away' ? g.a > g.h : g.h === g.a);
+  const pick = inOutcome[0];
   return {
+    outcome, outcome_pct: pct(outcome === 'home' ? pH : outcome === 'away' ? pA : pD),
+    pick: { score: pick.h + '–' + pick.a, pct: pct(pick.p) },
+    pick_alts: inOutcome.slice(1, 3).map(g => ({ score: g.h + '–' + g.a, pct: pct(g.p) })),
     xg_home: +lh.toFixed(2), xg_away: +la.toFixed(2),
     likely: grid.slice(0, 3).map(g => ({ score: g.h + '–' + g.a, pct: pct(g.p) })),
     home_win: pct(pH), draw: pct(pD), away_win: pct(pA),
@@ -71,7 +77,7 @@ module.exports = async (req, res) => {
       if (!p) return { ...base, note: 'Not enough history for one side' };
       const od = odds[m.id] && odds[m.id].data;
       if (od) {
-        const top = p.likely[0], cs = od['CS_' + top.score.replace('–', '-')];
+        const top = p.pick, cs = od['CS_' + top.score.replace('–', '-')];
         p.prices = {
           top_score: cs ? { odds: cs.o, book: cs.b, implied: +(100 / cs.o).toFixed(1), value: top.pct / 100 * cs.o > 1.05 } : null,
           home: od.H ? od.H.o : null, draw: od.D ? od.D.o : null, away: od.A ? od.A.o : null,
