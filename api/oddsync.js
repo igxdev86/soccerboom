@@ -8,8 +8,13 @@ const MAX_CALLS = +(process.env.ODDS_MAX_CALLS || 80), BOOKS = 'bet365,pinnacle,
 const num = v => { const x = parseFloat(v && (v.last_seen || v.opening || v)); return x > 1 ? x : null; };
 const scoreKey = k => { const m = String(k).match(/(\d+)\D+(\d+)/); return m ? m[1] + '-' + m[2] : null; };
 function extract(bookmakers) {
-  const best = {};
-  const put = (key, v, book) => { const o = num(v); if (o && (!best[key] || o > best[key].o)) best[key] = { o, b: book }; };
+  const best = {}, byBook = {};
+  const put = (key, v, book) => {
+    const o = num(v); if (!o) return;
+    if (!best[key] || o > best[key].o) best[key] = { o, b: book };
+    const slug = String(book).toLowerCase().replace(/[^a-z0-9]/g, '');
+    (byBook[slug] = byBook[slug] || {})[key] = o;
+  };
   (bookmakers || []).forEach(bk => {
     const m = bk.markets || {}, n = bk.bookmaker;
     if (m.match_odds) { put('H', m.match_odds.home, n); put('D', m.match_odds.draw, n); put('A', m.match_odds.away, n); }
@@ -17,7 +22,7 @@ function extract(bookmakers) {
     if (m.total_goals) for (const k in m.total_goals) if (parseFloat(String(k).match(/\d+(\.\d+)?/)?.[0]) === 2.5) { put('O25', m.total_goals[k].over, n); put('U25', m.total_goals[k].under, n); }
     if (m.correct_score) for (const k in m.correct_score) { const s = scoreKey(k); if (s) put('CS_' + s, m.correct_score[k], n); }
   });
-  return best;
+  return { ...best, books: byBook };
 }
 async function tsa(path) {
   const r = await fetch('https://api.thestatsapi.com/api' + path, { headers: { Authorization: 'Bearer ' + KEY } });
@@ -39,9 +44,9 @@ module.exports = async (req, res) => {
     // Finished UK matches from the DB that have no odds row yet.
     const [mR, oR] = await Promise.all([
       fetch(SB + `/rest/v1/matches?competition_id=in.(${comps.join(',')})&utc_date=gte.${since}&select=id,utc_date&order=utc_date.desc&limit=1500`, { headers: sbH }),
-      fetch(SB + `/rest/v1/odds?select=match_id,captured_at`, { headers: sbH })
+      fetch(SB + `/rest/v1/odds?select=match_id,captured_at,data`, { headers: sbH })
     ]);
-    const have = {}; (await oR.json()).forEach(o => have[o.match_id] = o.captured_at);
+    const have = {}; (await oR.json()).forEach(o => { if (o.data && o.data.books) have[o.match_id] = o.captured_at; });
     let queue = (await mR.json()).filter(m => !have[m.id]).map(m => m.id);
     // Upcoming UK matches (next 7 days): capture, and refresh if last capture > 20h old.
     const today = new Date(), wk = new Date(Date.now() + 7 * 864e5);
