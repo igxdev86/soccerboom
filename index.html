@@ -155,6 +155,8 @@ tr.expand td{background:#F0F4EE;font-size:.86rem;padding:10px 12px}
       <button id="pNext" aria-label="Next day">›</button>
     </div>
     <div class="bar"><select id="pCountry"><option value="__uk">UK (Eng, Sco, Wal, NI)</option><option value="">All countries</option></select></div>
+    <button class="gobtn" id="btBtn" style="margin-top:0">How has it done? Last 30 days, UK</button>
+    <div id="btOut"></div>
     <div id="predList"><div class="note">Pick a day.</div></div>
   </section>
 
@@ -194,6 +196,29 @@ function setTab(t){
   $('tabPredict').classList.toggle('on',t==='Predict');
   $('tabAnalysis').classList.toggle('on',t==='Analysis');
 }
+
+/* ---------- backtest ---------- */
+$('btBtn').onclick=async()=>{
+  const out=$('btOut');out.innerHTML='<div class="spin">Re-running every game from the last 30 days\u2026</div>';
+  try{
+    const r=await fetch('/api/backtest?days=30&country=uk');const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    if(!j.games){out.innerHTML='<div class="note">Not enough finished matches with history yet. Try again once the backfill has run for a day or two.</div>';return;}
+    const cal=Object.entries(j.calibration).sort();
+    out.innerHTML=`<div class="summary">
+      <div class="top">Track record \u00b7 ${j.games} UK games, last ${j.days} days</div>
+      <div class="kpis">
+        <div class="kpi"><b>${j.exact_score.pct}%</b><span>Exact score right<br>(model expected ${j.exact_score.model_said_pct}%)</span></div>
+        <div class="kpi"><b>${j.match_result.pct}%</b><span>Result right<br>(always-home gets ${j.match_result.always_home_pct}%)</span></div>
+        <div class="kpi"><b>${j.over_under_25.pct==null?'\u2013':j.over_under_25.pct+'%'}</b><span>Over/under 2.5<br>(${j.over_under_25.confident_calls} confident calls)</span></div>
+      </div>
+      <div class="headline">Always guessing 1\u20131 would score ${j.exact_score.always_1_1_pct}% on exact score. BTTS calls right ${j.btts.pct==null?'\u2013':j.btts.pct+'%'} of ${j.btts.confident_calls}. ${j.skipped_no_history} games skipped for thin history.</div>
+    </div>
+    <table><thead><tr><th>When the model said</th><th class="n">Games</th><th class="n">Actually hit</th></tr></thead>
+    <tbody>${cal.map(([k,v])=>`<tr><td>${k} likely</td><td class="n">${v.games}</td><td class="n">${v.hit_pct==null?'\u2013':v.hit_pct+'%'}</td></tr>`).join('')}</tbody></table>
+    <div class="small">Every game predicted using only matches played before that day \u2014 no peeking. The calibration table is the one to trust: if "12-15% likely" games hit about 12-15% of the time, the percentages mean what they say.</div>`;
+  }catch(e){out.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+};
 
 /* ---------- predictions ---------- */
 let pDay=new Date(),pData=[];
