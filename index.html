@@ -257,17 +257,18 @@ function renderPredictions(){
   el.innerHTML=rows.map(f=>{
     const ko=new Date(f.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     if(!f.likely)return `<div class="pred"><div class="comp">${esc(f.competition)} \u00b7 ${ko}</div><div class="teams"><div class="t h">${esc(f.home)}</div><div class="exp" style="background:var(--line);color:var(--ink-soft);font-size:1rem">?</div><div class="t">${esc(f.away)}</div></div><div class="meta">${esc(f.note||'')}</div></div>`;
-    const top=f.likely[0],others=f.likely.slice(1).map(x=>`${x.score} <b>${x.pct}%</b>`).join(' \u00b7 ');
-    const done=f.result?`<div class="done${f.result===top.score?' hit':''}">${f.status==='finished'?'Result '+f.result+(f.result===top.score?' \u2014 nailed it':''):'Live '+f.result}</div>`:'';
+    const top=f.pick,names={home:f.home,away:f.away,draw:'Draw'},alts=f.pick_alts.map(x=>`${x.score} <b>${x.pct}%</b>`).join(' \u00b7 ');
+    const hitRes=f.result&&(()=>{const [a,b]=f.result.split('\u2013').map(Number);return (a>b?'home':a<b?'away':'draw')===f.outcome;})();
+    const done=f.result?`<div class="done${f.result===top.score?' hit':hitRes?' hit':''}">${f.status==='finished'?'Result '+f.result+(f.result===top.score?' \u2014 exact score nailed':hitRes?' \u2014 result right':' \u2014 wrong'):'Live '+f.result}</div>`:'';
     return `<div class="pred">
       <div class="comp">${esc(f.competition)} \u00b7 ${ko}</div>
-      <div class="teams"><div class="t h">${esc(f.home)}</div><div><div class="exp">${top.score}</div><div class="pct">${top.pct}% likely</div></div><div class="t">${esc(f.away)}</div></div>
-      <div class="meta">Next most likely: ${others}</div>
+      <div class="teams"><div class="t h">${esc(f.home)}</div><div><div class="exp">${top.score}</div><div class="pct">${esc(names[f.outcome])} ${f.outcome_pct}%</div></div><div class="t">${esc(f.away)}</div></div>
+      <div class="meta">Most likely score if ${f.outcome==='draw'?'it\u2019s a draw':names[f.outcome]+' win'}: <b>${top.score}</b> ${top.pct}% \u00b7 then ${alts}</div>
       <div class="meta">Home <b>${f.home_win}%</b>${f.prices&&f.prices.home?' ('+f.prices.home+')':''} \u00b7 Draw <b>${f.draw}%</b>${f.prices&&f.prices.draw?' ('+f.prices.draw+')':''} \u00b7 Away <b>${f.away_win}%</b>${f.prices&&f.prices.away?' ('+f.prices.away+')':''} \u00b7 Over 2.5 <b>${f.over25}%</b>${f.prices&&f.prices.over25?' ('+f.prices.over25+')':''} \u00b7 BTTS <b>${f.btts}%</b>${f.prices&&f.prices.btts?' ('+f.prices.btts+')':''}</div>
       ${f.prices&&f.prices.top_score?`<div class="price">${top.score} best price <b>${f.prices.top_score.odds}</b> ${esc(f.prices.top_score.book)} (implies ${f.prices.top_score.implied}%) ${f.prices.top_score.value?'<span class="v">VALUE</span>':''}</div>`:f.prices?'<div class="price fx">No correct-score price captured for this game</div>':''}
       ${done}
     </div>`;
-  }).join('')+'<div class="small">Most likely 90-minute score from a Poisson goals model: each side\u2019s recent home/away attack v the other\u2019s defence, recent games weighted heavier. Even the top score is usually only 10\u201318% \u2014 that\u2019s football.</div>';
+  }).join('')+'<div class="small">Big score = most likely scoreline within the most likely result (home win, draw or away win). Poisson goals model: each side\u2019s recent home/away attack v the other\u2019s defence, recent games weighted heavier.</div>';
 }
 
 /* ---------- competitions ---------- */
