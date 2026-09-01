@@ -57,6 +57,8 @@ module.exports = async (req, res) => {
     ]);
     if (!formR.ok) return res.status(502).json({ error: 'Supabase: ' + (await formR.text()).slice(0, 200) + ' — run the v5 SQL (team_form with p_before)' });
     const form = {}; (await formR.json()).forEach(t => form[t.team_id] = t);
+    const oR = await fetch(SB + `/rest/v1/odds?match_id=in.(${fixtures.map(m => m.id).join(',')})&select=match_id,data,captured_at`, { headers: sbH });
+    const odds = {}; (oR.ok ? await oR.json() : []).forEach(o => odds[o.match_id] = o);
     const comps = {}; (compR.ok ? await compR.json() : []).forEach(c => comps[c.id] = c);
 
     const out = fixtures.map(m => {
@@ -66,7 +68,18 @@ module.exports = async (req, res) => {
         competition: c.name || null, country: c.country || null,
         result: m.score && m.score.home != null ? m.score.home + '–' + m.score.away : null };
       const p = H && A ? predict(H, A) : null;
-      return p ? { ...base, ...p } : { ...base, note: 'Not enough history for one side' };
+      if (!p) return { ...base, note: 'Not enough history for one side' };
+      const od = odds[m.id] && odds[m.id].data;
+      if (od) {
+        const top = p.likely[0], cs = od['CS_' + top.score.replace('–', '-')];
+        p.prices = {
+          top_score: cs ? { odds: cs.o, book: cs.b, implied: +(100 / cs.o).toFixed(1), value: top.pct / 100 * cs.o > 1.05 } : null,
+          home: od.H ? od.H.o : null, draw: od.D ? od.D.o : null, away: od.A ? od.A.o : null,
+          over25: od.O25 ? od.O25.o : null, btts: od.BTTS_Y ? od.BTTS_Y.o : null,
+          captured: odds[m.id].captured_at
+        };
+      }
+      return { ...base, ...p };
     }).filter(f => f.competition) // only leagues we track
       .sort((a, b) => (a.country || 'zz').localeCompare(b.country || 'zz') || a.kickoff.localeCompare(b.kickoff));
 
