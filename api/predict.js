@@ -52,10 +52,10 @@ module.exports = async (req, res) => {
     const ids = [...new Set(fixtures.flatMap(m => [m.home_team.id, m.away_team.id]))];
     const compIds = [...new Set(fixtures.map(m => m.competition_id))];
     const [formR, compR] = await Promise.all([
-      fetch(SB + '/rest/v1/rpc/team_form', { method: 'POST', headers: sbH, body: JSON.stringify({ p_ids: ids }) }),
+      fetch(SB + '/rest/v1/rpc/team_form', { method: 'POST', headers: sbH, body: JSON.stringify({ p_ids: ids, p_before: date + 'T00:00:00Z' }) }),
       fetch(SB + `/rest/v1/competitions?id=in.(${compIds.join(',')})&select=id,name,country`, { headers: sbH })
     ]);
-    if (!formR.ok) return res.status(502).json({ error: 'Supabase: ' + (await formR.text()).slice(0, 200) + ' — did you run the v4 SQL (team_form)?' });
+    if (!formR.ok) return res.status(502).json({ error: 'Supabase: ' + (await formR.text()).slice(0, 200) + ' — run the v5 SQL (team_form with p_before)' });
     const form = {}; (await formR.json()).forEach(t => form[t.team_id] = t);
     const comps = {}; (compR.ok ? await compR.json() : []).forEach(c => comps[c.id] = c);
 
