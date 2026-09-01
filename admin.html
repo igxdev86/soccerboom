@@ -12,6 +12,7 @@ pre{background:#fff;border:2px solid #14201A;padding:12px;white-space:pre-wrap;f
 <p>Runs the backfill in batches until every league is loaded. Keep this tab open; it resumes automatically if the API rate-limits.</p>
 <input id="secret" type="password" placeholder="SYNC_SECRET">
 <button id="go">Start backfill</button>
+<button id="odds" style="background:#14201A;border-color:#14201A">Capture UK odds (last 30 days + next 7)</button>
 <pre id="log">Idle.</pre>
 <script>
 let running=false,timer=null;
@@ -21,6 +22,15 @@ document.getElementById('go').onclick=()=>{
   running=true;document.getElementById('go').textContent='Stop';document.getElementById('go').classList.add('stop');
   tick();
 };
+document.getElementById('odds').onclick=()=>{running=false;clearTimeout(timer);oddsTick();};
+async function oddsTick(){
+  try{
+    const r=await fetch('/api/oddsync?secret='+encodeURIComponent(document.getElementById('secret').value));
+    const j=await r.json();log('Odds: '+JSON.stringify(j,null,2));
+    if(j.error||j.done)return;
+    timer=setTimeout(oddsTick,/rate/i.test(j.note||'')?65000:2000);
+  }catch(e){log('Network error, retrying in 10s\u2026');timer=setTimeout(oddsTick,10000);}
+}
 async function tick(){
   if(!running)return;
   try{
