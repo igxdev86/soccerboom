@@ -108,7 +108,11 @@ async function study(i){
     } else html+='<div class="ln">Not enough recent matches to model this one.</div>';
     html+=`<div class="ln">${esc(j.home)} form <span class="form">${esc(j.home_form||'\u2013')}</span>${j.home_goals?` \u00b7 ${j.home_goals[0]} for / ${j.home_goals[1]} against pg (${j.home_goals[2]})`:''}</div>
     <div class="ln">${esc(j.away)} form <span class="form">${esc(j.away_form||'\u2013')}</span>${j.away_goals?` \u00b7 ${j.away_goals[0]} for / ${j.away_goals[1]} against pg (${j.away_goals[2]})`:''}</div>`;
-    if(j.h2h&&j.h2h.length)html+=`<div class="ln">Recent meetings: ${j.h2h.map(esc).join(' \u00b7 ')}</div>`;
+    if(j.h2h&&j.h2h.length){
+      const r=j.h2h_record;
+      html+=`<div class="ln" style="margin-top:8px"><b>Head-to-head</b>${r?`: ${esc(j.home)} ${r.w}-${r.d}-${r.l} in ${r.n} \u00b7 goals ${r.gf}\u2013${r.ga}`:''}</div>`;
+      html+=`<div class="ln" style="max-height:140px;overflow-y:auto">${j.h2h.map(m=>`${m.year} \u00b7 ${esc(m.line)}`).join('<br>')}</div>`;
+    }
     const sq=(s,name)=>{
       if(!s)return '';
       let o=`<div class="ln" style="margin-top:8px"><b>${esc(name)} squad</b>: ${s.size} players \u00b7 avg age <b>${s.avg_age}</b> \u00b7 ${s.u23} U23 / ${s.o30} over 30${s.mv_m?` \u00b7 \u20ac${s.mv_m}m value`:''}${s.avg_rating?` \u00b7 key-player club rating <b>${s.avg_rating}</b>`:''}${s.key_out_count?` \u00b7 <b style="color:var(--loss)">${s.key_out_count} key out</b>`:''}</div>`;
