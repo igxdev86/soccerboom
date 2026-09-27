@@ -25,22 +25,22 @@ const num = v => { const x = parseFloat(v && (v.last_seen || v.opening || v)); r
 const scoreKey = k => { const m = String(k).match(/(\d+)\D+(\d+)/); return m ? m[1] + '-' + m[2] : null; };
 
 let compCache = null;
+const REGIONS = ['international', 'world', 'europe', 'africa', 'asia', 'south america', 'north america', 'oceania', 'central america'];
+const NAME_RE = /nations league|world cup|friendl|qualif|euro(?!pa)|copa am|cup of nations|gold cup|asian cup|confederations|finalissima|international/i;
 async function intlComps() {
   if (compCache && Date.now() - compCache.at < 864e5) return compCache.map;
   const map = {};
-  for (const type of ['international', 'cup_international']) {
-    try {
-      for (let page = 1; page <= 2; page++) {
-        const r = await tsa(`/football/competitions?type=${type}&per_page=100&page=${page}`);
-        r.data.forEach(c => map[c.id] = c.name);
-        if (page >= (r.meta.total_pages || 1)) break;
-      }
-    } catch (e) { /* type not supported → ignore */ }
+  for (let page = 1; page <= 4; page++) {
+    const r = await tsa(`/football/competitions?per_page=100&page=${page}`);
+    r.data.forEach(c => {
+      const country = (c.country || '').toLowerCase();
+      if (!country || REGIONS.includes(country) || NAME_RE.test(c.name || '')) map[c.id] = c.name;
+    });
+    if (page >= (r.meta.total_pages || 1)) break;
   }
   compCache = { at: Date.now(), map };
   return map;
 }
-
 module.exports = async (req, res) => {
   if (!KEY) return res.status(500).json({ error: 'THESTATSAPI_KEY not set' });
   try {
@@ -102,6 +102,12 @@ module.exports = async (req, res) => {
       const r = await tsa(`/football/matches?date_from=${date}&date_to=${date}&per_page=100&page=${page}`);
       fixtures.push(...r.data);
       if (page >= (r.meta.total_pages || 1)) break;
+    }
+    if (req.query.debug) {
+      const seen = {};
+      fixtures.forEach(m => seen[m.competition_id] = (seen[m.competition_id] || 0) + 1);
+      return res.status(200).json({ date, total: fixtures.length,
+        comps_today: Object.entries(seen).map(([id, n]) => ({ id, n, name: comps[id] || '(filtered out)' })) });
     }
     fixtures = fixtures.filter(m => comps[m.competition_id])
       .map(m => ({ id: m.id, kickoff: m.utc_date, status: m.status, competition: comps[m.competition_id],
