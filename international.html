@@ -79,7 +79,7 @@ async function load(){
       const mid=m.result?`<div class="mid${m.status==='live'?'" style="background:var(--bulb);color:var(--ink)':''}">${m.result}</div>`:`<div class="mid sched">${ko}</div>`;
       html+=`<div class="match" data-i="${i}"><div class="row"><div class="team h">${esc(m.home)}</div>${mid}<div class="team">${esc(m.away)}</div></div><div class="study" id="st${i}" hidden></div></div>`;
     });
-    el.innerHTML=html+'<div class="small">Tap a game to study it: last 15 matches each, head-to-head, a Poisson lean (overall form, mild home edge \u2014 treat qualifiers at neutral venues with care) and Bet365 prices where available. Yellow tag = model chance beats the price by 5%+.</div>';
+    el.innerHTML=html+'<div class="small">Tap a game to study it: last 15 matches each (blowouts capped, thin samples shrunk toward the mean, low-score correlation adjusted), head-to-head, full squad with ages, clubs and club-season form per key player, injuries, and Bet365 prices where available. Squad quality nudges the model by a few percent at most \u2014 the workings are shown. Yellow tag = model chance beats the price by 5%+.</div>';
     el.querySelectorAll('.match').forEach(mm=>mm.onclick=()=>study(+mm.dataset.i));
   }catch(e){el.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
 }
@@ -109,6 +109,17 @@ async function study(i){
     html+=`<div class="ln">${esc(j.home)} form <span class="form">${esc(j.home_form||'\u2013')}</span>${j.home_goals?` \u00b7 ${j.home_goals[0]} for / ${j.home_goals[1]} against pg (${j.home_goals[2]})`:''}</div>
     <div class="ln">${esc(j.away)} form <span class="form">${esc(j.away_form||'\u2013')}</span>${j.away_goals?` \u00b7 ${j.away_goals[0]} for / ${j.away_goals[1]} against pg (${j.away_goals[2]})`:''}</div>`;
     if(j.h2h&&j.h2h.length)html+=`<div class="ln">Recent meetings: ${j.h2h.map(esc).join(' \u00b7 ')}</div>`;
+    const sq=(s,name)=>{
+      if(!s)return '';
+      let o=`<div class="ln" style="margin-top:8px"><b>${esc(name)} squad</b>: ${s.size} players \u00b7 avg age <b>${s.avg_age}</b> \u00b7 ${s.u23} U23 / ${s.o30} over 30${s.mv_m?` \u00b7 \u20ac${s.mv_m}m value`:''}${s.avg_rating?` \u00b7 key-player club rating <b>${s.avg_rating}</b>`:''}${s.key_out_count?` \u00b7 <b style="color:var(--loss)">${s.key_out_count} key out</b>`:''}</div>`;
+      o+='<div class="ln">'+s.key.slice(0,8).map(p=>`${p.out?'<s>':''}${esc(p.name)} ${p.age}${p.club?' \u00b7 '+esc(p.club):''}${p.rating?' \u00b7 '+p.rating:''}${p.goals!=null?' \u00b7 '+p.goals+'g'+(p.assists?' '+p.assists+'a':''):''}${p.out?'</s> OUT':''}`).join('<br>')+'</div>';
+      return o;
+    };
+    html+=sq(j.squad_home,j.home)+sq(j.squad_away,j.away);
+    if(g&&g.adj){
+      const f=a=>{const parts=[];if(a.form)parts.push((a.form>0?'+':'')+a.form+'% club form');if(a.age)parts.push(a.age+'% age');if(a.inj)parts.push(a.inj+'% injuries');return parts.length?parts.join(', '):'none'};
+      html+=`<div class="ln">Model adjustments \u2014 ${esc(j.home)}: ${f(g.adj.home)} \u00b7 ${esc(j.away)}: ${f(g.adj.away)}${g.neutral?' \u00b7 neutral venue, no home boost':''}</div>`;
+    }
     if(!j.prices)html+='<div class="ln">No Bet365 prices captured for this game yet.</div>';
     box.innerHTML=html;
   }catch(e){box.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
