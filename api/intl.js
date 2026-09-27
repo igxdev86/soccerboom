@@ -68,8 +68,23 @@ module.exports = async (req, res) => {
       const hRows = hR.data.filter(m => m.score && m.score.home != null).sort((a, b) => b.utc_date.localeCompare(a.utc_date));
       const aRows = aR.data.filter(m => m.score && m.score.home != null).sort((a, b) => b.utc_date.localeCompare(a.utc_date));
       const hp = profile(hRows, H.id), ap = profile(aRows, A.id);
-      const h2h = hRows.filter(m => m.home_team.id === A.id || m.away_team.id === A.id).slice(0, 3)
-        .map(m => `${m.home_team.name} ${m.score.home}\u2013${m.score.away} ${m.away_team.name}`);
+      // Full head-to-head: page through the home nation's last ~300 matches and keep meetings.
+      let meetings = [];
+      for (let page = 1; page <= 3; page++) {
+        let r; try { r = await tsa(`/football/matches?team_id=${H.id}&status=finished&per_page=100&page=${page}`); } catch (e) { break; }
+        meetings.push(...r.data.filter(m => (m.home_team.id === A.id || m.away_team.id === A.id) && m.score && m.score.home != null));
+        if (page >= (r.meta.total_pages || 1)) break;
+      }
+      meetings.sort((a, b) => b.utc_date.localeCompare(a.utc_date));
+      const rec = { w: 0, d: 0, l: 0, gf: 0, ga: 0 };
+      const h2h = meetings.map(m => {
+        const hIsHome = m.home_team.id === H.id;
+        const gf = hIsHome ? m.score.home : m.score.away, ga = hIsHome ? m.score.away : m.score.home;
+        rec.gf += gf; rec.ga += ga;
+        if (gf > ga) rec.w++; else if (gf < ga) rec.l++; else rec.d++;
+        return { year: m.utc_date.slice(0, 4), line: `${m.home_team.name} ${m.score.home}\u2013${m.score.away} ${m.away_team.name}` };
+      });
+      const h2h_record = h2h.length ? { ...rec, n: h2h.length } : null;
 
       // ---- squad analysis ----
       const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY;
@@ -187,7 +202,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ id, home: H.name, away: A.name,
         home_form: hp.form, away_form: ap.form,
         home_goals: hp.n ? [hp.gf_pg, hp.ga_pg, hp.n] : null, away_goals: ap.n ? [ap.gf_pg, ap.ga_pg, ap.n] : null,
-        h2h, model, prices, squad_home: sqHome, squad_away: sqAway });
+        h2h, h2h_record, model, prices, squad_home: sqHome, squad_away: sqAway });
     }
 
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : new Date().toISOString().slice(0, 10);
