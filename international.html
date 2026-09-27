@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoccerBoom — internationals study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#FAFBF8;--ink:#14201A;--ink-soft:#4A5A50;--pitch:#0E7A3C;--bulb:#FFD400;--line:#DCE3DC;--loss:#C0392B}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Barlow',system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.45}
+.wrap{max-width:680px;margin:0 auto;padding:0 14px 80px}
+header{padding:18px 0 12px;border-bottom:3px solid var(--ink)}
+.brand{font-family:'Barlow Condensed';font-weight:800;font-size:2.1rem;line-height:1}
+.brand em{font-style:normal;color:var(--pitch)}
+.tag{color:var(--ink-soft);font-size:.85rem;margin-top:2px}
+.tag a{color:var(--pitch)}
+.datenav{display:flex;align-items:center;gap:6px;margin:14px 0}
+.datenav button{border:2px solid var(--ink);background:#fff;width:38px;height:38px;font-size:1.1rem;font-weight:700;cursor:pointer;flex:none}
+.datenav .day{font-family:'Barlow Condensed';font-weight:800;font-size:1.15rem;flex:1;text-align:center}
+.comphead{font-family:'Barlow Condensed';font-weight:800;font-size:1.05rem;margin:16px 0 2px;border-bottom:2px solid var(--ink);padding-bottom:3px}
+.match{padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.match:active{background:#F0F4EE}
+.row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.team{font-weight:500;font-size:.98rem}
+.team.h{text-align:right}
+.mid{font-family:'Barlow Condensed';font-weight:800;font-size:1.25rem;min-width:64px;text-align:center;padding:3px 6px;background:var(--ink);color:var(--paper)}
+.mid.sched{background:none;color:var(--ink-soft);font-size:1rem;font-weight:600}
+.study{margin-top:10px;border:2px solid var(--ink);background:#fff;padding:10px 12px;font-size:.86rem}
+.study .exp{font-family:'Barlow Condensed';font-weight:800;font-size:1.7rem;color:#fff;background:var(--pitch);display:inline-block;padding:3px 10px;line-height:1.1}
+.study .pctb{font-family:'Barlow Condensed';font-weight:800;color:var(--pitch);font-size:1.05rem;margin-left:8px}
+.study .ln{margin-top:6px;color:var(--ink-soft)}
+.study .ln b{color:var(--ink)}
+.form{font-family:'Barlow Condensed';font-weight:800;letter-spacing:.12em}
+.v{background:var(--bulb);padding:1px 6px;font-weight:700}
+.note{padding:26px 8px;color:var(--ink-soft);text-align:center}
+.err{border:2px solid var(--loss);padding:12px;margin:14px 0;font-size:.92rem}
+.spin{padding:24px;text-align:center;color:var(--ink-soft)}
+.small{font-size:.8rem;color:var(--ink-soft);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">SOCCER<em>BOOM</em> <span style="font-size:1.1rem">INTERNATIONALS</span></div>
+    <div class="tag">Form, model lean &amp; Bet365 prices \u00b7 <a href="/">back to leagues</a></div>
+  </header>
+  <div class="datenav">
+    <button id="prev" aria-label="Previous day">\u2039</button>
+    <div class="day" id="dayLbl"></div>
+    <button id="next" aria-label="Next day">\u203a</button>
+  </div>
+  <div id="list"><div class="spin">Loading tonight\u2019s internationals\u2026</div></div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let day=new Date(),data=[];
+const fmt=d=>d.toISOString().slice(0,10);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('prev').onclick=()=>{day.setDate(day.getDate()-1);load();};
+$('next').onclick=()=>{day.setDate(day.getDate()+1);load();};
+
+async function load(){
+  const d=fmt(day),today=fmt(new Date());
+  $('dayLbl').textContent=(d===today?'Today, ':'')+day.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  const el=$('list');el.innerHTML='<div class="spin">Loading\u2026</div>';
+  try{
+    const r=await fetch('/api/intl?date='+d);const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error '+r.status);
+    data=j.fixtures;
+    if(!data.length){el.innerHTML='<div class="note">No internationals on this day. Step through the days \u2014 breaks cluster around Thu\u2013Tue.</div>';return;}
+    let html='',lastComp='';
+    data.forEach((m,i)=>{
+      if(m.competition!==lastComp){html+=`<div class="comphead">${esc(m.competition)}</div>`;lastComp=m.competition;}
+      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const mid=m.result?`<div class="mid${m.status==='live'?'" style="background:var(--bulb);color:var(--ink)':''}">${m.result}</div>`:`<div class="mid sched">${ko}</div>`;
+      html+=`<div class="match" data-i="${i}"><div class="row"><div class="team h">${esc(m.home)}</div>${mid}<div class="team">${esc(m.away)}</div></div><div class="study" id="st${i}" hidden></div></div>`;
+    });
+    el.innerHTML=html+'<div class="small">Tap a game to study it: last 15 matches each, head-to-head, a Poisson lean (overall form, mild home edge \u2014 treat qualifiers at neutral venues with care) and Bet365 prices where available. Yellow tag = model chance beats the price by 5%+.</div>';
+    el.querySelectorAll('.match').forEach(mm=>mm.onclick=()=>study(+mm.dataset.i));
+  }catch(e){el.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+async function study(i){
+  const box=$('st'+i);
+  if(!box.hidden){box.hidden=true;return;}
+  document.querySelectorAll('.study').forEach(s=>s.hidden=true);
+  box.hidden=false;
+  if(box.dataset.done)return;
+  box.innerHTML='<div class="spin">Pulling form, h2h &amp; prices\u2026</div>';
+  try{
+    const r=await fetch('/api/intl?match='+data[i].id);const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'error');
+    box.dataset.done=1;
+    const g=j.model,p=j.prices||{};
+    const px=(v,mpct)=>v?` (${v}${mpct!=null&&mpct/100*v>1.05?' <span class="v">VALUE</span>':''})`:'';
+    let html='';
+    if(g){
+      const names={home:j.home,away:j.away,draw:'Draw'};
+      html+=`<div><span class="exp">${g.pick.score}</span><span class="pctb">${esc(names[g.outcome])} ${g.outcome_pct}%</span></div>
+      <div class="ln">Most likely scores: ${g.top.map(x=>`<b>${x.score}</b> ${x.pct}%`).join(' \u00b7 ')}</div>
+      <div class="ln">Home <b>${g.home_win}%</b>${px(p.home,g.home_win)} \u00b7 Draw <b>${g.draw}%</b>${px(p.draw,g.draw)} \u00b7 Away <b>${g.away_win}%</b>${px(p.away,g.away_win)}</div>
+      <div class="ln">Over 2.5 <b>${g.over25}%</b>${px(p.over25,g.over25)} \u00b7 BTTS <b>${g.btts}%</b>${px(p.btts,g.btts)}${p.pick?` \u00b7 ${g.pick.score} @ <b>${p.pick}</b>${g.pick.pct/100*p.pick>1.05?' <span class="v">VALUE</span>':''}`:''}</div>
+      <div class="ln">Model xG ${g.xg[0]} \u2013 ${g.xg[1]}</div>`;
+    } else html+='<div class="ln">Not enough recent matches to model this one.</div>';
+    html+=`<div class="ln">${esc(j.home)} form <span class="form">${esc(j.home_form||'\u2013')}</span>${j.home_goals?` \u00b7 ${j.home_goals[0]} for / ${j.home_goals[1]} against pg (${j.home_goals[2]})`:''}</div>
+    <div class="ln">${esc(j.away)} form <span class="form">${esc(j.away_form||'\u2013')}</span>${j.away_goals?` \u00b7 ${j.away_goals[0]} for / ${j.away_goals[1]} against pg (${j.away_goals[2]})`:''}</div>`;
+    if(j.h2h&&j.h2h.length)html+=`<div class="ln">Recent meetings: ${j.h2h.map(esc).join(' \u00b7 ')}</div>`;
+    if(!j.prices)html+='<div class="ln">No Bet365 prices captured for this game yet.</div>';
+    box.innerHTML=html;
+  }catch(e){box.innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+load();
+</script>
+</body>
+</html>
