@@ -69,7 +69,7 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
 <div class="cab"><div class="inner">
   <div class="marq">GOAL<em>RUSH</em> SLOT</div>
   <div class="tag" style="color:var(--gold2);font-size:.85rem;letter-spacing:.14em;font-weight:700">WIN UP TO £10,000</div>
-  <div class="fs" id="fsbar" style="display:block"><b id="poolleft">—</b> TICKETS LEFT · TOP PRIZE <b id="pooltop">£10,000</b></div>
+  <div class="fs" id="fsbar" style="display:block"><b id="poolleft">—</b> TICKETS · <b id="poolfund">—</b> PRIZE MONEY LEFT · TOP <b id="pooltop">£10,000</b></div>
   <div class="reels" id="reels"></div>
   <div class="meters">
     <div class="mt"><span>BALANCE</span><b id="bal">£0.00</b></div>
@@ -244,7 +244,8 @@ el('spin').onclick=async()=>{
     }
     if(p>=2500)overlay('<h2>'+(p>=1000000?'\u00a310,000 JACKPOT':p>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(p)+'</div>',2200);
     el('msg').textContent='WON '+fmt(p)+(mult>1?' ('+fmt(base)+' \u00d7'+mult+')':'')+(j.paid?' \u00b7 \u00a31 ticket':' \u00b7 free ticket');
-    if(j.remaining!=null&&el('poolleft'))el('poolleft').textContent=j.remaining;
+    if(j.remaining!=null&&el('poolleft'))el('poolleft').textContent=(+j.remaining).toLocaleString();
+    if(window._fund!=null&&el('poolfund')){window._fund-=p;el('poolfund').textContent='\u00a3'+Math.round(window._fund/100).toLocaleString();}
   }catch(e){el('msg').textContent=e.message;}
   spinning=false;meters();
 };
@@ -252,16 +253,29 @@ async function series(){
   try{const j=await (await fetch('/api/slot?action=series&user='+uk)).json();
     if(j.series&&el('poolleft')){el('poolleft').textContent=(j.series.total-j.series.sold).toLocaleString();
       window._pl=j.series.prizes_left;
-      const top=Math.max(...Object.keys(j.series.prizes_left).map(k=>{const q=String(k).split('|');return q.length>1?(+q[0])*(+q[1]):+q[0];}));
+      let fund=0,top=0;
+      Object.entries(j.series.prizes_left).forEach(([k,n])=>{const q=String(k).split('|');const v=q.length>1?(+q[0])*(+q[1]):+q[0];fund+=v*n;if(v>top)top=v;});
+      window._fund=fund;
+      if(el('poolfund'))el('poolfund').textContent='\u00a3'+Math.round(fund/100).toLocaleString();
       if(el('pooltop'))el('pooltop').textContent=fmt(top).replace('.00','');}
   }catch(e){}
 }
 el('pt').onclick=()=>{
   const pl=window._pl||{};
-  const agg={};
-  Object.entries(pl).forEach(([k,n])=>{const parts=String(k).split('|');const v=parts.length>1?(+parts[0])*(+parts[1]):+parts[0];agg[v]=(agg[v]||0)+n;});
-  const rows=Object.entries(agg).sort((a,b)=>b[0]-a[0]).map(([p,n])=>'<tr><td>'+fmt(+p)+'</td><td>'+n+' left</td></tr>').join('');
-  overlay('<h2>PRIZES LEFT</h2><table>'+(rows||'<tr><td>Loading…</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">100,000 tickets this series · every prize fixed before sale · top prize £10,000 · every ticket wins · reels are display only</p>');
+  const symsFor=b=>{
+    const rep=(s,n)=>SYM[s].repeat(n);
+    if(b>=50000)return rep('W',5);if(b>=10000)return rep('GOAL',5);if(b>=2500)return rep('RED',5);
+    if(b>=500)return rep('GOAL',4);if(b>=200)return rep('BOOT',4);if(b>=100)return rep('GLOVE',3);
+    if(b>=50)return rep('YEL',3);return rep('SHIRT',3);
+  };
+  const rows=Object.entries(pl).map(([k,n])=>{
+    const q=String(k).split('|');const b=+q[0],m=q.length>1?+q[1]:1;
+    return {b,m,v:b*m,n};
+  }).sort((a,x)=>x.v-a.v).map(r=>
+    '<tr><td style="font-size:1.05rem;letter-spacing:2px">'+symsFor(r.b)+(r.m>1?' <span style="color:var(--gold2);font-weight:700">\u00d7'+r.m+'</span>':'')+'</td>'+
+    '<td style="font-weight:700">'+fmt(r.v)+'</td><td>'+r.n.toLocaleString()+' left</td></tr>').join('');
+  const fund=window._fund!=null?'\u00a3'+Math.round(window._fund/100).toLocaleString():'\u2014';
+  overlay('<h2>PRIZES LEFT</h2><p style="color:var(--gold2);font-weight:700;margin-top:4px">'+fund+' still to be won</p><table><thead><tr><td style="color:var(--dim)">Reveal</td><td style="color:var(--dim)">Prize</td><td style="color:var(--dim)">Remaining</td></tr></thead>'+(rows||'<tr><td>Loading\u2026</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">100,000 tickets this series \u00b7 every prize and bonus multiplier fixed before sale \u00b7 every ticket wins \u00b7 reels are display only</p>');
 };
 function meters(){el('bal').textContent=fmt(won);el('betv').textContent=spinsLeft;el('spin').textContent=spinsLeft>0?'SPIN — FREE TICKET':'SPIN — £1 TICKET';el('spin').disabled=spinning;}
 draw(spinGrid(Math.random));state();series();
