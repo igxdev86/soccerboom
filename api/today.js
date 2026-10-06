@@ -1,7 +1,7 @@
 // GET /api/today → today's fixtures that actually HAVE a lineup (predicted or confirmed),
 // with the XIs bundled. Probes are capped and CDN-cached to protect quota.
 const KEY = process.env.THESTATSAPI_KEY;
-const MAX_PROBES = 80, CONCURRENCY = 8, MIN_COVERAGE_PCT = 50;
+const MAX_PROBES = 60, CONCURRENCY = 8, MIN_COVERAGE_PCT = 50;
 let compCache = null;
 
 async function tsa(path) {
@@ -56,6 +56,26 @@ module.exports = async (req, res) => {
         try {
           const lu = (await tsa(`/football/matches/${m.id}/lineups`)).data;
           if (!lu || !lu.home || !(lu.home.starting_xi || []).length) return null;
+          // Event-tracking check + events: only keep matches whose timeline is covered.
+          const live = m.status === 'live';
+          let tl = null;
+          try {
+            tl = await tsa(`/football/matches/${m.id}/${live ? 'live-timeline' : 'timeline'}?event_type=goal,red_card`);
+          } catch (e1) {
+            if (e1.status === 400) { // event_type value not recognised — fetch unfiltered
+              try { tl = await tsa(`/football/matches/${m.id}/${live ? 'live-timeline' : 'timeline'}`); } catch (e2) { return null; }
+            } else if (!live) return null; // 409/404 → not trackable
+            else return null;
+          }
+          const meta = (tl && tl.meta) || {};
+          const cov = (tl && tl.data && tl.data.coverage) || meta.coverage;
+          if (!live && cov === 'none' && meta.reason !== 'match_not_started') return null;
+          const events = ((tl && tl.data && tl.data.events) || [])
+            .filter(e => e.type === 'goal' || /red/.test(e.type || ''))
+            .map(e => ({ min: e.minute + (e.extra_time ? '+' + e.extra_time : ''),
+              type: e.type === 'goal' ? 'goal' : 'red',
+              player: e.player ? e.player.name : null,
+              team: e.team ? e.team.name : null }));
           const side = s => ({ name: s.name, formation: s.formation || null,
             xi: (s.starting_xi || []).map(p => ({ n: p.jersey_number, name: p.name, pos: p.position })) });
           return { id: m.id, competition_id: m.competition_id,
@@ -64,6 +84,7 @@ module.exports = async (req, res) => {
             home: m.home_team.name, away: m.away_team.name,
             score: m.score && m.score.home != null ? m.score.home + '–' + m.score.away : null,
             minute: m.live && m.live.elapsed_minutes || null,
+            events,
             lineup: { type: lu.type, confirmed: !!lu.confirmed, home: side(lu.home), away: side(lu.away) } };
         } catch (e) { return null; }
       }));
