@@ -8,7 +8,8 @@ const TICKET_PENCE = 100;
 // £25+ are pure-cash jackpot instants — no event multiplier (tail-liability cap).
 const CASH = [[10000, .0004, false], [5000, .001, false], [2500, .003, false],
   [1000, .002, true], [200, .01, true], [100, .025, true], [50, .04, true], [25, .07, true], [10, .15, true]];
-const CASH_FLOOR = 4;
+const CASH_FLOOR = 5;
+const BIG_CAP = 500; // max Big Match tickets per featured fixture
 // Event multipliers applied to the instant win (cumulative): bonus = instant × Σ multipliers
 const MULT = { goal: 10, yellow: 3, red: 20 };
 const PER_GOAL = { G: 0, D: 0, M: 0, F: 0 }; // legacy column, unused in multiplier model
@@ -128,7 +129,13 @@ module.exports = async (req, res) => {
       if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
       const big = req.query.kind === 'big';
       let feat = null;
-      if (big) { feat = await getFeatured() || await autoPickBig(); if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' }); }
+      if (big) {
+        feat = await getFeatured() || await autoPickBig();
+        if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' });
+        const cnt = await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${feat.match_id}&select=id`, { headers: { ...sbH, Prefer: 'count=exact', Range: '0-0' } });
+        const total = parseInt((cnt.headers.get('content-range') || '/0').split('/')[1] || '0', 10);
+        if (total >= BIG_CAP) return res.status(409).json({ error: 'Big Match sold out for this fixture \u2014 standard tickets still on sale.' });
+      }
       const f = await upcomingFixtures();
       if (!big && !f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
       const draw = drawCash();
