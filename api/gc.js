@@ -16,21 +16,52 @@ async function tsa(path) {
   if (!r.ok) throw new Error('TSA ' + r.status);
   return r.json();
 }
+let squadPoolCache = null;
 async function pool() {
   const base = process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://soccerboom.vercel.app';
-  const j = await (await fetch(base + '/api/today')).json();
+  const j = await (await fetch(base + '/api/today')).json().catch(() => ({}));
   const players = [];
   (j.fixtures || []).forEach(f => {
-    if (f.status === 'finished') return; // only matches still to play or in play
+    if (f.status === 'finished') return;
     ['home', 'away'].forEach(side => {
       (f.lineup[side].xi || []).forEach(p => players.push({
         player_name: p.name, pos: p.pos || 'M', team_name: f.lineup[side].name,
-        match_id: f.id, fixture: f.home + ' v ' + f.away, kickoff: f.kickoff,
-        confirmed: f.lineup.confirmed
+        match_id: f.id, fixture: f.home + ' v ' + f.away, kickoff: f.kickoff, source: 'xi'
       }));
     });
   });
-  return players;
+  if (players.length) return players;
+  // Daytime fallback: no team sheets yet → allocate from full squads of today's
+  // remaining fixtures in lineup-covered competitions. Non-starters score 0; that's the game.
+  if (squadPoolCache && Date.now() - squadPoolCache.at < 36e5) return squadPoolCache.p;
+  const d = new Date().toISOString().slice(0, 10);
+  const covered = new Set();
+  for (let p = 1; p <= 2; p++) {
+    const r = await tsa(`/coverage/leagues?data_type=lineups&per_page=200&page=${p}`);
+    r.data.forEach(c => { const lu = c.data_types && c.data_types.lineups; if (lu && lu.available) covered.add(c.id); });
+    if (p >= (r.meta.total_pages || 1)) break;
+  }
+  let fx = [];
+  for (let p = 1; p <= 4; p++) {
+    const r = await tsa(`/football/matches?date_from=${d}&date_to=${d}&per_page=100&page=${p}`);
+    fx.push(...r.data);
+    if (p >= (r.meta.total_pages || 1)) break;
+  }
+  fx = fx.filter(m => m.status === 'scheduled' && covered.has(m.competition_id))
+    .sort((a, b) => a.utc_date.localeCompare(b.utc_date)).slice(0, 8);
+  const out = [];
+  for (const m of fx) {
+    for (const side of [m.home_team, m.away_team]) {
+      try {
+        const sq = (await tsa(`/football/teams/${side.id}/players`)).data || [];
+        sq.forEach(p => out.push({ player_name: p.short_name || p.name, pos: p.position || 'M',
+          team_name: side.name, match_id: m.id,
+          fixture: m.home_team.name + ' v ' + m.away_team.name, kickoff: m.utc_date, source: 'squad' }));
+      } catch (e) {}
+    }
+  }
+  squadPoolCache = { at: Date.now(), p: out };
+  return out;
 }
 const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return 0; };
 
