@@ -4,8 +4,10 @@ const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY, KEY 
 const sbH = { apikey: SK, Authorization: 'Bearer ' + SK, 'Content-Type': 'application/json' };
 
 const TICKET_PENCE = 100;
-// Guaranteed-win table: every ticket pays. Ordered checks; 4p is the floor.
-const CASH = [[10000, .0005], [1000, .0015], [500, .004], [200, .01], [100, .024], [50, .04], [25, .07], [10, .15]];
+// Guaranteed-win table: [pence, probability, multiplier-eligible]. Every ticket pays; 4p floor.
+// £25+ are pure-cash jackpot instants — no event multiplier (tail-liability cap).
+const CASH = [[10000, .0004, false], [5000, .001, false], [2500, .003, false],
+  [1000, .002, true], [200, .01, true], [100, .025, true], [50, .04, true], [25, .07, true], [10, .15, true]];
 const CASH_FLOOR = 4;
 // Event multipliers applied to the instant win (cumulative): bonus = instant × Σ multipliers
 const MULT = { goal: 10, yellow: 3, red: 20 };
@@ -47,7 +49,7 @@ async function upcomingFixtures() {
   fxCache = { at: Date.now(), f };
   return f;
 }
-const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return CASH_FLOOR; };
+const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr, b] of CASH) { acc += pr; if (r < acc) return { pence: p, bonus: b }; } return { pence: CASH_FLOOR, bonus: true }; };
 const pickFrom = a => a[Math.floor(Math.random() * a.length)];
 
 // Confirmed-XI pool for a match, or null if sheet not confirmed yet (played matches count as confirmed).
@@ -88,17 +90,25 @@ module.exports = async (req, res) => {
       if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
       const f = await upcomingFixtures();
       if (!f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
-      const fx = pickFrom(f);
-      const cash = drawCash();
-      let t = { match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
-        player_name: null, position: null, team_name: null, per_goal_pence: 0 };
-      const xi = await confirmedPool(fx.id);
-      if (xi) { const p = pickFrom(xi); t = { ...t, player_name: p.player_name, position: p.position, team_name: p.team_name, per_goal_pence: PER_GOAL[p.position] || PER_GOAL.M }; }
+      const draw = drawCash();
+      let t;
+      if (!draw.bonus) {
+        // Jackpot instant: pure cash, no fixture, no player, settled at purchase.
+        t = { match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
+      } else {
+        const fx = pickFrom(f);
+        t = { match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
+          player_name: null, position: null, team_name: null, per_goal_pence: 0 };
+        const xi = await confirmedPool(fx.id);
+        if (xi) { const p = pickFrom(xi); t = { ...t, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
+      }
       const r = await fetch(SB + '/rest/v1/rpc/gc_buy', { method: 'POST', headers: sbH,
-        body: JSON.stringify({ p_user: authed, p_price: TICKET_PENCE, p_cash: cash, p_ticket: t }) });
+        body: JSON.stringify({ p_user: authed, p_price: TICKET_PENCE, p_cash: draw.pence, p_ticket: t }) });
       if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' — run the wallet SQL' });
       const out = await r.json();
       if (out.error === 'insufficient') return res.status(402).json({ error: 'Balance too low — demo top-ups coming with payments.' });
+      if (!draw.bonus) await fetch(SB + `/rest/v1/gc_tickets?id=eq.${out.ticket_id}`, { method: 'PATCH', headers: sbH,
+        body: JSON.stringify({ settled: true, bonus_pence: 0 }) }).catch(() => {});
       const trow = await (await fetch(SB + `/rest/v1/gc_tickets?id=eq.${out.ticket_id}&select=*`, { headers: sbH })).json();
       return res.status(200).json({ ticket: trow[0], balance_pence: out.balance });
     }
