@@ -1,0 +1,93 @@
+// GOALCASH prototype. One endpoint, three actions:
+//  POST /api/gc?action=buy&user=KEY   → instant cash prize + random player from tonight's confirmed XIs
+//  GET  /api/gc?action=tickets&user=  → user's tickets (lazy-settles finished matches first)
+//  GET  /api/gc?action=pool           → tonight's eligible player count (for the page header)
+const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY, KEY = process.env.THESTATSAPI_KEY;
+const sbH = { apikey: SK, Authorization: 'Bearer ' + SK, 'Content-Type': 'application/json' };
+
+const TICKET_PENCE = 100;
+// Instant cash table (pence, cumulative probability). ~34% hit rate, ~55p EV.
+const CASH = [[50, .20], [100, .08], [200, .04], [500, .015], [1000, .004], [10000, .0005]];
+// Per-goal bonus by position (pence). Keepers are the lottery ticket.
+const PER_GOAL = { G: 25000, D: 2500, M: 500, F: 200 };
+
+async function tsa(path) {
+  const r = await fetch('https://api.thestatsapi.com/api' + path, { headers: { Authorization: 'Bearer ' + KEY } });
+  if (!r.ok) throw new Error('TSA ' + r.status);
+  return r.json();
+}
+async function pool() {
+  const base = process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://soccerboom.vercel.app';
+  const j = await (await fetch(base + '/api/today')).json();
+  const players = [];
+  (j.fixtures || []).forEach(f => {
+    if (f.status === 'finished') return; // only matches still to play or in play
+    ['home', 'away'].forEach(side => {
+      (f.lineup[side].xi || []).forEach(p => players.push({
+        player_name: p.name, pos: p.pos || 'M', team_name: f.lineup[side].name,
+        match_id: f.id, fixture: f.home + ' v ' + f.away, kickoff: f.kickoff,
+        confirmed: f.lineup.confirmed
+      }));
+    });
+  });
+  return players;
+}
+const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return 0; };
+
+module.exports = async (req, res) => {
+  if (!SB || !SK || !KEY) return res.status(500).json({ error: 'Missing env vars' });
+  const action = req.query.action, user = String(req.query.user || '').slice(0, 64);
+  try {
+    if (action === 'pool') {
+      const p = await pool();
+      res.setHeader('Cache-Control', 's-maxage=600');
+      return res.status(200).json({ players: p.length, matches: [...new Set(p.map(x => x.match_id))].length });
+    }
+
+    if (action === 'buy') {
+      if (!user) return res.status(400).json({ error: 'user required' });
+      const p = await pool();
+      if (!p.length) return res.status(409).json({ error: 'No eligible matches right now — tickets open when team sheets are in for upcoming games.' });
+      const pick = p[Math.floor(Math.random() * p.length)];
+      const cash = drawCash();
+      const per_goal = PER_GOAL[pick.pos] || PER_GOAL.M;
+      const t = { user_key: user, player_name: pick.player_name, position: pick.pos,
+        team_name: pick.team_name, match_id: pick.match_id, fixture: pick.fixture, kickoff: pick.kickoff,
+        cash_pence: cash, per_goal_pence: per_goal, settled: false };
+      const r = await fetch(SB + '/rest/v1/gc_tickets', { method: 'POST', headers: { ...sbH, Prefer: 'return=representation' }, body: JSON.stringify([t]) });
+      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' — run the GOALCASH SQL' });
+      return res.status(200).json({ ticket: (await r.json())[0] });
+    }
+
+    if (action === 'tickets') {
+      if (!user) return res.status(400).json({ error: 'user required' });
+      // Lazy settlement: finished matches among this user's unsettled tickets.
+      const uR = await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(user)}&settled=eq.false&select=match_id`, { headers: sbH });
+      const open = [...new Set((await uR.json()).map(t => t.match_id))].slice(0, 10);
+      for (const mid of open) {
+        try {
+          const m = (await tsa(`/football/matches/${mid}`)).data;
+          if (m.status !== 'finished') continue;
+          let goals = {};
+          try {
+            const tl = await tsa(`/football/matches/${mid}/timeline?event_type=goal`);
+            ((tl.data && tl.data.events) || []).forEach(e => { if (e.player) goals[e.player.name] = (goals[e.player.name] || 0) + 1; });
+          } catch (e) {}
+          const tk = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,player_name,per_goal_pence`, { headers: sbH })).json();
+          for (const t of tk) {
+            const g = goals[t.player_name] || 0;
+            await fetch(SB + `/rest/v1/gc_tickets?id=eq.${t.id}`, { method: 'PATCH', headers: sbH,
+              body: JSON.stringify({ settled: true, goals: g, bonus_pence: g * t.per_goal_pence }) });
+          }
+        } catch (e) {}
+      }
+      const all = await (await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(user)}&select=*&order=created_at.desc&limit=50`, { headers: sbH })).json();
+      const won = all.reduce((s, t) => s + (t.cash_pence || 0) + (t.bonus_pence || 0), 0);
+      const spent = all.length * TICKET_PENCE;
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ tickets: all, spent_pence: spent, won_pence: won });
+    }
+
+    return res.status(400).json({ error: 'unknown action' });
+  } catch (e) { return res.status(502).json({ error: e.message }); }
+};
