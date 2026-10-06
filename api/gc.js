@@ -65,9 +65,22 @@ async function pool() {
 }
 const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return 0; };
 
+async function authUser(req) {
+  const tok = (req.headers.authorization || '').replace(/^Bearer /, '');
+  if (!tok) return null;
+  try {
+    const r = await fetch(SB + '/auth/v1/user', { headers: { apikey: process.env.SUPABASE_ANON_KEY || SK, Authorization: 'Bearer ' + tok } });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return u && u.id ? 'auth_' + u.id : null;
+  } catch (e) { return null; }
+}
+
 module.exports = async (req, res) => {
   if (!SB || !SK || !KEY) return res.status(500).json({ error: 'Missing env vars' });
-  const action = req.query.action, user = String(req.query.user || '').slice(0, 64);
+  const action = req.query.action;
+  const authed = await authUser(req);
+  const user = authed || String(req.query.user || '').slice(0, 64);
   try {
     if (action === 'pool') {
       const p = await pool();
@@ -117,6 +130,30 @@ module.exports = async (req, res) => {
       const spent = all.length * TICKET_PENCE;
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ tickets: all, spent_pence: spent, won_pence: won });
+    }
+
+    if (action === 'claim') {
+      if (!authed) return res.status(401).json({ error: 'sign in first' });
+      const anon = String(req.query.anon || '').slice(0, 64);
+      if (!anon || anon.startsWith('auth_')) return res.status(400).json({ error: 'anon key required' });
+      const r = await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(anon)}`, {
+        method: 'PATCH', headers: { ...sbH, Prefer: 'return=minimal' }, body: JSON.stringify({ user_key: authed }) });
+      return res.status(r.ok ? 200 : 502).json({ claimed: r.ok });
+    }
+
+    if (action === 'admin') {
+      if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
+      const all = await (await fetch(SB + '/rest/v1/gc_tickets?select=user_key,cash_pence,bonus_pence,goals,settled,position,created_at,player_name,fixture&order=created_at.desc&limit=10000', { headers: sbH })).json();
+      const n = all.length, spent = n * TICKET_PENCE;
+      const cash = all.reduce((s, t) => s + (t.cash_pence || 0), 0);
+      const bonus = all.reduce((s, t) => s + (t.bonus_pence || 0), 0);
+      const byPos = {};
+      all.forEach(t => { const p = byPos[t.position] = byPos[t.position] || { n: 0, goals: 0, bonus: 0 }; p.n++; p.goals += t.goals || 0; p.bonus += t.bonus_pence || 0; });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ tickets: n, users: new Set(all.map(t => t.user_key)).size,
+        revenue_pence: spent, instant_paid_pence: cash, bonus_paid_pence: bonus,
+        rtp_pct: n ? +(((cash + bonus) / spent) * 100).toFixed(1) : null,
+        unsettled: all.filter(t => !t.settled).length, by_position: byPos, recent: all.slice(0, 25) });
     }
 
     return res.status(400).json({ error: 'unknown action' });
