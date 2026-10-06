@@ -27,14 +27,35 @@ td,th{padding:7px 6px;border-bottom:1px solid var(--hair);text-align:left}
 <h1>GOAL<em>RUSH</em> admin</h1>
 <input id="sec" type="password" placeholder="Admin secret (SYNC_SECRET)">
 <button id="go">Load</button>
+<div id="featured" style="margin-top:14px"></div>
 <div id="out"></div>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 const fmt=p=>'£'+(p/100).toFixed(2);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function loadFeatured(){
+  const s=$('sec').value.trim();
+  try{
+    const r=await fetch('/api/gc?action=upcoming&secret='+encodeURIComponent(s));
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    let html='<h3 style="font-size:1rem;margin:10px 0 4px;color:var(--grn)">Big Match</h3>';
+    html+=j.featured?`<p>Current: <b>${esc(j.featured.fixture)}</b> <button data-clear="1" class="feat" style="width:auto;padding:6px 12px;margin-left:8px;background:var(--red)">Clear</button></p>`:'<p class="dim">None set.</p>';
+    html+='<table><thead><tr><th>Fixture</th><th>KO (GMT)</th><th></th></tr></thead><tbody>';
+    html+=j.fixtures.slice(0,30).map(f=>`<tr><td>${esc(f.home)} v ${esc(f.away)}</td><td>${new Date(f.kickoff).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit',timeZone:'GMT'})}</td><td><button data-mid="${f.id}" class="feat" style="width:auto;padding:5px 10px;margin:0;font-size:.8rem">Feature</button></td></tr>`).join('');
+    html+='</tbody></table>';
+    $('featured').innerHTML=html;
+    document.querySelectorAll('.feat').forEach(b=>b.onclick=async()=>{
+      const q=b.dataset.clear?'&clear=1':'&match_id='+b.dataset.mid;
+      await fetch('/api/gc?action=feature&secret='+encodeURIComponent(s)+q,{method:'POST'});
+      loadFeatured();
+    });
+  }catch(e){$('featured').innerHTML='<p style="color:var(--red)">'+esc(e.message)+'</p>';}
+}
 $('go').onclick=async()=>{
   const s=$('sec').value.trim();localStorage.setItem('gc_admin',s);
+  loadFeatured();
   $('out').innerHTML='<p class="dim">Loading…</p>';
   try{
     const r=await fetch('/api/gc?action=admin&secret='+encodeURIComponent(s));
