@@ -60,6 +60,12 @@ h1 em{font-style:normal;color:var(--grn)}
   <button class="buy" id="buy">BUY TICKET — £1</button>
   <div class="bal"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
   <div id="reveal"></div>
+  <h2 style="margin-top:26px;font-size:1rem">Your clubs</h2>
+  <div class="card" id="favcard">
+    <div id="favs" style="font-size:.9rem;color:var(--dim)">No favourite clubs yet.</div>
+    <input id="favq" type="text" placeholder="Search a club to follow" autocomplete="off" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:10px">
+    <div id="favres"></div>
+  </div>
   <div class="card" id="acct">
     <div id="acctOut" style="font-size:.9rem;color:var(--dim)">Checking account…</div>
     <div id="acctForm" hidden>
@@ -70,7 +76,7 @@ h1 em{font-style:normal;color:var(--grn)}
   </div>
   <h2 style="margin-top:26px;font-size:1rem">Your tickets</h2>
   <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
-  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's fixtures \u2014 confirmed starting XIs once team sheets are in, full squads before that (if your player doesn't get on, they score 0 \u2014 that's the game). Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.<br><br><b>Play for free by post</b> — every postal entry gets the identical draw, same prizes, no purchase needed.<br><br>
+  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (\u22481h before kickoff) \u2014 position decides your per-goal rate. Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.<br><br><b>Play for free by post</b> — every postal entry gets the identical draw, same prizes, no purchase needed.<br><br>
 <a href="/goalcash-howto.html" style="color:var(--grn)">How to play</a> \u00b7 <a href="/goalcash-rules.html" style="color:var(--grn)">Terms &amp; free entry</a> \u00b7 <a href="/goalcash-privacy.html" style="color:var(--grn)">Privacy</a> \u00b7 18+ \u00b7 GB residents \u00b7 <a href="https://www.begambleaware.org" style="color:var(--grn)">BeGambleAware.org</a></div>
 </div>
 <script>
@@ -98,7 +104,7 @@ function renderAcct(){
   }else{$('acctOut').textContent='Sign in to keep your tickets across devices.';$('acctForm').hidden=false;}
 }
 async function claimAnon(){
-  try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});load();}catch(e){}
+  try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});load();loadFavs();}catch(e){}
 }
 document.addEventListener('click',e=>{
   if(e.target&&e.target.id==='acctBtn'){
@@ -123,8 +129,8 @@ const fmt=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
 
 async function poolInfo(){
   try{const j=await (await fetch('/api/gc?action=pool')).json();
-    $('poolinfo').textContent=j.players?j.players+' players across '+j.matches+' trackable matches tonight.':'No eligible matches right now.';
-    if(!j.players){$('buy').disabled=true;$('buy').textContent='NO TRACKABLE FIXTURES TODAY';}
+    $('poolinfo').textContent=j.fixtures?j.fixtures+' trackable fixtures in the next '+j.window_h+' hours.':'No eligible fixtures right now.';
+    if(!j.fixtures){$('buy').disabled=true;$('buy').textContent='NO TRACKABLE FIXTURES IN WINDOW';}
   }catch(e){}
 }
 $('buy').onclick=async()=>{
@@ -152,14 +158,41 @@ async function load(){
     $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
     if(!j.tickets.length)return;
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
-      <div class="l1"><span>${esc(t.player_name)} <span style="color:var(--dim)">(${esc(t.position)})</span></span>
-      <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">live/pending</span>'}</span></div>
-      <div class="l2">${esc(t.fixture)} \u00b7 ${fmt(t.per_goal_pence)}/goal</div>
+      <div class="l1"><span>${t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
+      <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">open</span>'}</span></div>
+      <div class="l2">${esc(t.fixture)} \u00b7 ${new Date(t.kickoff).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'GMT'})} ${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT${t.player_name?' \u00b7 '+fmt(t.per_goal_pence)+'/goal':''}</div>
     </div>`).join('');
   }catch(e){}
 }
 if(localStorage.getItem('gc_18'))document.getElementById('agegate').style.display='none';
-poolInfo();load();initAuth();
+let favTimer=null;
+$('favq').oninput=()=>{
+  clearTimeout(favTimer);
+  const q=$('favq').value.trim();
+  if(q.length<3){$('favres').innerHTML='';return;}
+  favTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/tsa?path='+encodeURIComponent('/football/teams?search='+q+'&per_page=6'));
+      const j=await r.json();
+      $('favres').innerHTML=(j.data||[]).map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid var(--hair);font-size:.9rem"><span>${esc(t.name)} <span style="color:var(--dim)">${esc(t.country||'')}</span></span><button data-id="${t.id}" data-name="${esc(t.name)}" class="favadd" style="background:var(--grn);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:inherit;font-weight:700;cursor:pointer">\u2605</button></div>`).join('');
+      document.querySelectorAll('.favadd').forEach(b=>b.onclick=async()=>{
+        await fetch('/api/gc?action=fav_add&user='+uk+'&team_id='+b.dataset.id+'&team_name='+encodeURIComponent(b.dataset.name),{method:'POST',headers:hdrs()});
+        $('favq').value='';$('favres').innerHTML='';loadFavs();
+      });
+    }catch(e){}
+  },350);
+};
+async function loadFavs(){
+  try{
+    const j=await (await fetch('/api/gc?action=fav_list&user='+uk,{headers:hdrs()})).json();
+    if(!j.favs||!j.favs.length){$('favs').innerHTML='No favourite clubs yet \u2014 search below to follow.';return;}
+    $('favs').innerHTML=j.favs.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--hair)"><span><b style="color:var(--txt)">${esc(f.team_name)}</b><br><span style="font-size:.8rem">${f.next?esc(f.next.fixture)+' \u00b7 '+new Date(f.next.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})+' '+new Date(f.next.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT':'No upcoming fixture found'}</span></span><button data-id="${f.team_id}" class="favdel" style="background:none;border:1px solid var(--hair);color:var(--dim);border-radius:8px;padding:5px 10px;font-family:inherit;cursor:pointer">\u2715</button></div>`).join('');
+    document.querySelectorAll('.favdel').forEach(b=>b.onclick=async()=>{
+      await fetch('/api/gc?action=fav_del&user='+uk+'&team_id='+b.dataset.id,{method:'POST',headers:hdrs()});loadFavs();
+    });
+  }catch(e){}
+}
+poolInfo();load();initAuth();loadFavs();
 </script>
 <nav class="gcnav"><a href="/goalcash.html" class="on">Play</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a></nav>
 </body>
