@@ -38,6 +38,8 @@ input::placeholder{color:var(--dim)}
 .note{color:var(--dim);text-align:center;padding:40px 0}
 .err{border:1px solid var(--red);border-radius:10px;padding:14px;margin-top:16px;font-size:.9rem}
 .count{color:var(--dim);font-size:.8rem;margin-top:10px}
+.bdg{display:inline-block;width:22px;text-align:center;margin-right:8px;font-size:.95rem}
+.bdg.mono{width:22px;height:22px;line-height:22px;border-radius:6px;font-size:.6rem;font-weight:700;color:#fff;vertical-align:middle}
 .evs{border-top:1px solid var(--hair);padding:8px 16px 10px;display:flex;flex-wrap:wrap;gap:6px 12px}
 .ev{font-size:.76rem;color:var(--dim)}
 .ev.red{color:var(--red);font-weight:700}
@@ -61,6 +63,20 @@ input::placeholder{color:var(--dim)}
 </div>
 <script>
 "use strict";
+const ISO={'England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Northern Ireland':'gb-nir','Ireland':'ie','Republic of Ireland':'ie','France':'fr','Germany':'de','Spain':'es','Italy':'it','Portugal':'pt','Netherlands':'nl','Belgium':'be','Denmark':'dk','Norway':'no','Sweden':'se','Finland':'fi','Iceland':'is','Switzerland':'ch','Austria':'at','Poland':'pl','Czech Republic':'cz','Czechia':'cz','Slovakia':'sk','Slovenia':'si','Croatia':'hr','Serbia':'rs','Bosnia and Herzegovina':'ba','Montenegro':'me','North Macedonia':'mk','Albania':'al','Greece':'gr','Turkey':'tr','Ukraine':'ua','Russia':'ru','Romania':'ro','Bulgaria':'bg','Hungary':'hu','Georgia':'ge','Armenia':'am','Azerbaijan':'az','Israel':'il','Kosovo':'xk','Moldova':'md','Belarus':'by','Lithuania':'lt','Latvia':'lv','Estonia':'ee','Luxembourg':'lu','Malta':'mt','Cyprus':'cy','Faroe Islands':'fo','Gibraltar':'gi','Andorra':'ad','San Marino':'sm','Liechtenstein':'li','Kazakhstan':'kz','Brazil':'br','Argentina':'ar','Uruguay':'uy','Chile':'cl','Colombia':'co','Peru':'pe','Ecuador':'ec','Paraguay':'py','Bolivia':'bo','Venezuela':'ve','USA':'us','United States':'us','Mexico':'mx','Canada':'ca','Japan':'jp','South Korea':'kr','Korea Republic':'kr','China':'cn','Australia':'au','New Zealand':'nz','Saudi Arabia':'sa','Qatar':'qa','Morocco':'ma','Algeria':'dz','Tunisia':'tn','Egypt':'eg','Senegal':'sn','Nigeria':'ng','Ghana':'gh','Cameroon':'cm','Ivory Coast':'ci','Mali':'ml','South Africa':'za'};
+function flag(name){
+  const iso=ISO[name];if(!iso)return '';
+  if(iso.startsWith('gb-')){return {'gb-eng':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f','gb-sct':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f','gb-wls':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc77\udb40\udc6c\udb40\udc73\udb40\udc7f','gb-nir':''}[iso]||'';}
+  if(iso==='xk')return '\ud83c\udde6\ud83c\uddf1'==='x'?'':'\ud83c\uddfd\ud83c\uddf0';
+  return String.fromCodePoint(...[...iso.toUpperCase()].map(c=>0x1F1A5+c.charCodeAt(0)));
+}
+function badge(name){
+  const f=flag(name);if(f)return '<span class="bdg">'+f+'</span>';
+  const init=name.split(/\s+/).filter(w=>w.length>1&&!/^(fc|cf|afc|ac|sc|cd|de|the|club)$/i.test(w)).slice(0,2).map(w=>w[0].toUpperCase()).join('')||name.slice(0,2).toUpperCase();
+  let hsh=0;for(let i=0;i<name.length;i++)hsh=(hsh*31+name.charCodeAt(i))>>>0;
+  return '<span class="bdg mono" style="background:hsl('+(hsh%360)+' 45% 28%)">'+init+'</span>';
+}
+
 const $=id=>document.getElementById(id);
 let data=[],timer=null;
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -86,14 +102,15 @@ function render(){
   rows.forEach(m=>(groups[m.competition]=groups[m.competition]||[]).push(m));
   $('list').innerHTML=Object.keys(groups).sort().map(k=>{
     const ms=groups[k];
-    return `<div class="comp"><h2>${esc(k)}</h2><div class="card">${ms.map(m=>{
+    const gflag=flag(k.split(' \u2014 ')[0]);
+    return `<div class="comp"><h2>${gflag?gflag+' ':''}${esc(k)}</h2><div class="card">${ms.map(m=>{
       const live=m.status==='live',fin=m.status==='finished';
       const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
       const right=m.score
         ?`<div class="right"><div class="score">${m.score}</div><div class="st${live?' live':''}">${live?(m.minute?m.minute+"'":'LIVE'):'FT'}</div></div>`
         :`<div class="right"><div class="ko">${ko}</div><div class="st${m.lineup.confirmed?'':' predlab'}">${m.lineup.confirmed?'XI CONFIRMED':'PREDICTED XI'}</div></div>`;
       const ev=(m.events&&m.events.length)?`<div class="evs">${m.events.map(e=>`<span class="ev${e.type==='red'?' red':''}">${e.type==='red'?'\u25a0 ':''}${e.min}' ${esc(e.player||e.team||'')}</span>`).join('')}</div>`:'';
-      return `<div class="m" data-id="${m.id}"><div class="teams"><div class="win">${esc(m.home)}</div><div class="win">${esc(m.away)}</div></div>${right}</div>${ev}<div class="lu" id="lu${m.id}" hidden></div>`;
+      return `<div class="m" data-id="${m.id}"><div class="teams"><div class="win">${badge(m.home)}${esc(m.home)}</div><div class="win">${badge(m.away)}${esc(m.away)}</div></div>${right}</div>${ev}<div class="lu" id="lu${m.id}" hidden></div>`;
     }).join('')}</div></div>`;
   }).join('');
   document.querySelectorAll('.m[data-id]').forEach(el=>el.onclick=()=>toggle(el.dataset.id));
