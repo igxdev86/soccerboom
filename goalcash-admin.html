@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>GOALCASH — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B0E13;--panel:#12161E;--txt:#F2F4F8;--dim:#7C8594;--grn:#27B35B;--red:#E8402A;--hair:#1E2430}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:1.5rem}h1 em{font-style:normal;color:var(--grn)}
+input,button{width:100%;padding:13px;border-radius:10px;border:1px solid var(--hair);background:var(--panel);color:var(--txt);font-family:inherit;font-size:1rem;margin-top:10px}
+button{background:var(--grn);border:none;color:#fff;font-weight:700;cursor:pointer}
+.kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
+.kpi{background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:12px;text-align:center}
+.kpi b{display:block;font-size:1.3rem}
+.kpi span{color:var(--dim);font-size:.72rem}
+.kpi.warn b{color:var(--red)}
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:.85rem}
+td,th{padding:7px 6px;border-bottom:1px solid var(--hair);text-align:left}
+.dim{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>GOAL<em>CASH</em> admin</h1>
+<input id="sec" type="password" placeholder="Admin secret (SYNC_SECRET)">
+<button id="go">Load</button>
+<div id="out"></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=p=>'£'+(p/100).toFixed(2);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('go').onclick=async()=>{
+  const s=$('sec').value.trim();localStorage.setItem('gc_admin',s);
+  $('out').innerHTML='<p class="dim">Loading…</p>';
+  try{
+    const r=await fetch('/api/gc?action=admin&secret='+encodeURIComponent(s));
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    const bp=Object.entries(j.by_position||{}).map(([p,v])=>`<tr><td>${esc(p)}</td><td>${v.n}</td><td>${v.goals}</td><td>${fmt(v.bonus)}</td></tr>`).join('');
+    $('out').innerHTML=`
+    <div class="kpis">
+      <div class="kpi"><b>${j.tickets}</b><span>Tickets</span></div>
+      <div class="kpi"><b>${j.users}</b><span>Users</span></div>
+      <div class="kpi ${j.rtp_pct>100?'warn':''}"><b>${j.rtp_pct==null?'–':j.rtp_pct+'%'}</b><span>RTP</span></div>
+      <div class="kpi"><b>${fmt(j.revenue_pence)}</b><span>Revenue</span></div>
+      <div class="kpi"><b>${fmt(j.instant_paid_pence)}</b><span>Instant paid</span></div>
+      <div class="kpi"><b>${fmt(j.bonus_paid_pence)}</b><span>Goal bonuses</span></div>
+    </div>
+    <p class="dim" style="margin-top:10px">${j.unsettled} tickets unsettled (settle lazily when holders check, or after tonight's games).</p>
+    <table><thead><tr><th>Pos</th><th>Tickets</th><th>Goals</th><th>Bonus paid</th></tr></thead><tbody>${bp}</tbody></table>
+    <table><thead><tr><th>Recent</th><th>Instant</th><th>Bonus</th></tr></thead><tbody>
+    ${j.recent.map(t=>`<tr><td>${esc(t.player_name)} <span class="dim">${esc(t.fixture||'')}</span></td><td>${t.cash_pence?fmt(t.cash_pence):'–'}</td><td>${t.settled?(t.bonus_pence?fmt(t.bonus_pence):'0'):'<span class="dim">open</span>'}</td></tr>`).join('')}
+    </tbody></table>`;
+  }catch(e){$('out').innerHTML='<p style="color:var(--red)">'+esc(e.message)+'</p>';}
+};
+if(localStorage.getItem('gc_admin')){$('sec').value=localStorage.getItem('gc_admin');}
+</script>
+</body>
+</html>
