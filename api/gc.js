@@ -119,6 +119,7 @@ async function authUser(req) {
 module.exports = async (req, res) => {
   if (!SB || !SK || !KEY) return res.status(500).json({ error: 'Missing env vars' });
   const action = req.query.action;
+  const demoMode = !process.env.SUPABASE_ANON_KEY; // no auth configured yet → device-anonymous demo play
   const authed = await authUser(req);
   const user = authed || String(req.query.user || '').slice(0, 64);
   try {
@@ -131,7 +132,13 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'buy') {
-      if (!authed) return res.status(401).json({ error: 'Sign in to play \u2014 your balance lives on your account.' });
+      const buyer = authed || (demoMode && user && !user.startsWith('auth_') ? user : null);
+      if (!buyer) return res.status(401).json({ error: 'Sign in to play \u2014 your balance lives on your account.' });
+      if (!authed) { // demo: seed £50 test balance on first touch
+        const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(buyer)}&select=user_key`, { headers: sbH })).json();
+        if (!w.length) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
+          body: JSON.stringify({ p_user: buyer, p_amount: 5000, p_reason: 'demo_credit', p_ticket: null }) }).catch(() => {});
+      }
       const big = req.query.kind === 'big';
       let feat = null;
       if (big) {
@@ -156,7 +163,7 @@ module.exports = async (req, res) => {
       }
       const totalCash = entries.reduce((s, e) => s + e.cash_pence, 0);
       const r = await fetch(SB + '/rest/v1/rpc/gc_buy_pack', { method: 'POST', headers: sbH,
-        body: JSON.stringify({ p_user: authed, p_price: PACK_PRICE, p_cash: totalCash, p_entries: entries }) });
+        body: JSON.stringify({ p_user: buyer, p_price: PACK_PRICE, p_cash: totalCash, p_entries: entries }) });
       if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' \u2014 run the Squad Pack SQL' });
       const out = await r.json();
       if (out.error === 'insufficient') return res.status(402).json({ error: 'Balance too low \u2014 top-ups coming with payments.' });
@@ -246,8 +253,8 @@ module.exports = async (req, res) => {
       const spiceByPack = {}; (spice || []).forEach(s => spiceByPack[s.pack_id] = s);
       const won = all.reduce((s, t) => s + (t.cash_pence || 0) + (t.bonus_pence || 0), 0) + (spice || []).reduce((s, x) => s + (x.bonus_pence || 0), 0);
       let balance = null;
-      if (authed) {
-        const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(authed)}&select=balance_pence`, { headers: sbH })).json();
+      if (user) {
+        const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
         balance = w[0] ? w[0].balance_pence : null;
       }
       res.setHeader('Cache-Control', 'no-store');
