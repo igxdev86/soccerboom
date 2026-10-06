@@ -52,28 +52,28 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
   <div class="fs" id="fsbar">FREE SPINS · <b id="fsn">0</b> LEFT · ALL WINS ×2 · 🟥🟥 = +1 SPIN</div>
   <div class="reels" id="reels"></div>
   <div class="meters">
-    <div class="mt"><span>PRIZES WON</span><b id="bal">£0.00</b></div>
-    <div class="mt"><span>FREE SPINS</span><b id="betv">0</b></div>
+    <div class="mt"><span>BALANCE</span><b id="bal">£0.00</b></div>
+    <div class="mt"><span>FREE TKTS</span><b id="betv">0</b></div>
     <div class="mt"><span>WIN</span><b id="winv">£0.00</b></div>
   </div>
   <div class="ctrl">
-    <button class="spin" id="spin" style="flex:1">SPIN FREE</button>
+    <button class="spin" id="spin" style="flex:1">SPIN — £1 TICKET</button>
   </div>
-  <div class="sub"><button id="daily">CLAIM TODAY’S 5 FREE SPINS</button><button id="pt">PAYTABLE</button></div>
+  <div class="sub"><button id="daily">CLAIM TODAY’S 5 FREE TICKETS</button><button id="pt">PRIZES LEFT</button></div>
   <div style="display:flex;gap:8px;margin-top:8px">
-    <input id="codein" placeholder="Enter a free spin code" style="flex:1;background:#050a14;border:1px solid #223457;border-radius:10px;color:var(--txt);font-family:inherit;padding:11px 12px;font-size:.9rem">
+    <input id="codein" placeholder="Enter a free ticket code" style="flex:1;background:#050a14;border:1px solid #223457;border-radius:10px;color:var(--txt);font-family:inherit;padding:11px 12px;font-size:.9rem">
     <button id="codego" style="background:#1a2a47;color:var(--gold2);padding:0 16px">CLAIM</button>
   </div>
-  <div class="msg" id="msg">Free prize draw · no purchase ever</div>
+  <div class="msg" id="msg">Instant-win draw · every ticket wins · free entry route in rules</div>
 </div></div>
 <div id="agegate" style="position:fixed;inset:0;background:rgba(3,5,10,.97);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px">
   <div style="background:linear-gradient(180deg,#14233f,#0a1322);border:2px solid var(--gold);border-radius:18px;padding:24px;max-width:360px;text-align:center">
     <div style="font-weight:700;font-size:1.2rem;color:var(--gold2)">18+ only</div>
-    <p style="color:var(--dim);font-size:.85rem;margin:10px 0 16px">GOALRUSH SLOT is a free prize draw — every spin comes from a free code, no purchase ever, real prizes. Great Britain residents, 18+.</p>
+    <p style="color:var(--dim);font-size:.85rem;margin:10px 0 16px">GOALRUSH SLOT is a free prize draw — each ticket's prize is predetermined in a published finite pool — the reels only reveal it. Free postal entry route available. Great Britain residents, 18+.</p>
     <button class="spin" style="width:100%;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
   </div>
 </div>
-<div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. No purchase necessary, ever. 18+, GB residents.<br><a href="/">← Home</a></div>
+<div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. Free postal entry route available — identical tickets from the identical pool. 18+, GB residents.<br><a href="/">← Home</a></div>
 <div id="ov"><div class="box" id="ovbox"></div></div>
 <script>
 "use strict";
@@ -161,35 +161,48 @@ async function animateTo(final,hitSet){
   for(let settle=1;settle<=5;settle++){draw(final.map((c,i)=>i<settle?c:rndGrid()[i]));await new Promise(r=>setTimeout(r,100));}
   draw(final,hitSet);
 }
+function prizeGrid(p){
+  const pick=(s,n)=>{const g=rndGrid();for(let i=0;i<n;i++)g[i][1]=s;for(let i=n;i<5;i++){if(g[i][1]===s)g[i][1]='SHIRT';}return g;};
+  if(p>=50000)return pick('W',5);
+  if(p>=10000)return pick('GOAL',5);
+  if(p>=2500)return pick('RED',5);
+  if(p>=500)return pick('GOAL',4);
+  if(p>=200)return pick('BOOT',4);
+  if(p>=100)return pick('GLOVE',3);
+  if(p>=50)return pick('YEL',3);
+  return pick('SHIRT',3);
+}
 el('spin').onclick=async()=>{
-  if(spinning||spinsLeft<1)return;
+  if(spinning)return;
   spinning=true;meters();el('winv').textContent=fmt(0);el('msg').textContent='';
   try{
     const r=await fetch('/api/slot?action=spin&user='+uk,{method:'POST'});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
-    spinsLeft=j.spins;
-    let running=0;
-    for(let i=0;i<j.sequence.length;i++){
-      const s=j.sequence[i];
-      if(i===1){el('fsbar').style.display='block';}
-      if(i>0)el('fsn').textContent=(j.sequence.length-1-i);
-      const hs=new Set();(s.hits||[]).forEach(h=>{for(let rr=0;rr<h.n;rr++)hs.add(rr+'-'+LINES[h.line][rr]);});
-      s.grid.forEach((c,rr)=>c.forEach((sym,row)=>{if(sym==='SC'&&s.scatters>=3)hs.add(rr+'-'+row);}));
-      await animateTo(s.grid,hs);
-      if(s.varMult){overlay('<h2>VAR CHECK</h2><div class="amt">'+(s.win>0?'×'+s.varMult:'+'+fmt(10))+'</div>',1200);await new Promise(r=>setTimeout(r,1200));}
-      if(i===0&&j.sequence.length>1){overlay('<h2>MISSION FREE GAMES</h2><div class="amt">'+(j.sequence.length-1)+'</div><p style="color:var(--dim)">All wins ×2</p>',1500);await new Promise(r=>setTimeout(r,1400));}
-      running+=s.win;el('winv').textContent=fmt(running);
-      if(i>0)await new Promise(r=>setTimeout(r,350));
-    }
-    el('fsbar').style.display='none';
-    won=j.won_pence;meters();
-    if(j.total_win>=200)overlay('<h2>'+(j.total_win>=500?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(j.total_win)+'</div>',1800);
-    el('msg').textContent=j.total_win>0?'WON '+fmt(j.total_win):'No win — spin again';
+    spinsLeft=j.spins;won=j.balance_pence;
+    const g=prizeGrid(j.prize_pence);
+    const hs=new Set();for(let i=0;i<5;i++)hs.add(i+'-1');
+    await animateTo(g,hs);
+    const steps=14;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(j.prize_pence*i/steps));await new Promise(r2=>setTimeout(r2,26));}
+    if(j.prize_pence>=2500)overlay('<h2>'+(j.prize_pence>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(j.prize_pence)+'</div>',1900);
+    el('msg').textContent='WON '+fmt(j.prize_pence)+(j.paid?' · £1 ticket':' · free ticket');
+    if(j.remaining!=null)el('poolleft').textContent=j.remaining;
   }catch(e){el('msg').textContent=e.message;}
   spinning=false;meters();
 };
-draw(spinGrid(Math.random));state();
+async function series(){
+  try{const j=await (await fetch('/api/slot?action=series&user='+uk)).json();
+    if(j.series){el('poolleft').textContent=j.series.total-j.series.sold;
+      window._pl=j.series.prizes_left;}
+  }catch(e){}
+}
+el('pt').onclick=()=>{
+  const pl=window._pl||{};
+  const rows=Object.entries(pl).sort((a,b)=>b[0]-a[0]).map(([p,n])=>'<tr><td>'+fmt(+p)+'</td><td>'+n+' left</td></tr>').join('');
+  overlay('<h2>PRIZES LEFT</h2><table>'+(rows||'<tr><td>Loading…</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">Series 1 · 10,000 tickets · every prize fixed before sale · every ticket wins · reels are display only</p>');
+};
+function meters(){el('bal').textContent=fmt(won);el('betv').textContent=spinsLeft;el('spin').textContent=spinsLeft>0?'SPIN — FREE TICKET':'SPIN — £1 TICKET';el('spin').disabled=spinning;}
+draw(spinGrid(Math.random));state();series();
 </script>
 </body>
 </html>
