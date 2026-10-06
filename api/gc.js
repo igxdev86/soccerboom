@@ -284,6 +284,22 @@ module.exports = async (req, res) => {
       return res.status(200).json({ favs: out });
     }
 
+    if (action === 'winners') {
+      // Public, anonymised recent wins for the winners feed.
+      const since = new Date(Date.now() - 7 * 864e5).toISOString();
+      const big = await (await fetch(SB + `/rest/v1/gc_tickets?settled=eq.true&created_at=gte.${since}&or=(bonus_pence.gte.20,cash_pence.gte.100)&select=player_name,position,fixture,cash_pence,bonus_pence,goals,cards,reds,created_at&order=created_at.desc&limit=40`, { headers: sbH })).json().catch(() => []);
+      const spice = await (await fetch(SB + `/rest/v1/gc_pack_bonus?created_at=gte.${since}&select=match_id,mult,bonus_pence,created_at&order=created_at.desc&limit=20`, { headers: sbH })).json().catch(() => []);
+      res.setHeader('Cache-Control', 's-maxage=300');
+      return res.status(200).json({ wins: big || [], spice: spice || [] });
+    }
+
+    if (action === 'ledger') {
+      if (!authed) return res.status(401).json({ error: 'sign in' });
+      const rows = await (await fetch(SB + `/rest/v1/gc_ledger?user_key=eq.${encodeURIComponent(authed)}&select=delta_pence,reason,created_at&order=created_at.desc&limit=30`, { headers: sbH })).json();
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ ledger: rows });
+    }
+
     if (action === 'claim') {
       if (!authed) return res.status(401).json({ error: 'sign in first' });
       const anon = String(req.query.anon || '').slice(0, 64);
