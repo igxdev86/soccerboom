@@ -7,171 +7,213 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/goalcash.webmanifest">
-
-<title>GOALCASH — prototype</title>
+<title>GOALCASH</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0B0E13;--panel:#12161E;--txt:#F2F4F8;--dim:#7C8594;--grn:#27B35B;--red:#E8402A;--hair:#1E2430}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:16px}
-.wrap{max-width:560px;margin:0 auto;padding:0 16px 90px}
-header{padding:26px 0 8px}
-h1{font-weight:700;font-size:1.9rem;letter-spacing:-.02em}
-h1 em{font-style:normal;color:var(--grn)}
-.sub{color:var(--dim);font-size:.85rem;margin-top:4px}
-.buy{width:100%;margin:18px 0 6px;padding:18px;border:none;border-radius:14px;background:var(--grn);color:#fff;font-family:inherit;font-weight:700;font-size:1.25rem;cursor:pointer}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 96px}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(11,14,19,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;padding:14px 0 10px;border-bottom:1px solid var(--hair)}
+.brand{font-weight:700;font-size:1.45rem;letter-spacing:-.02em}
+.brand em{font-style:normal;color:var(--grn)}
+.pill{border:none;background:var(--grn);color:#fff;font-family:inherit;font-weight:700;font-size:.9rem;padding:9px 16px;border-radius:999px;cursor:pointer}
+.pill.ghost{background:var(--panel);border:1px solid var(--hair);color:var(--txt)}
+.sub{color:var(--dim);font-size:.85rem;margin:14px 0 0}
+.buy{width:100%;margin:14px 0 6px;padding:18px;border:none;border-radius:14px;background:var(--grn);color:#fff;font-family:inherit;font-weight:700;font-size:1.25rem;cursor:pointer}
 .buy:disabled{background:var(--hair);color:var(--dim)}
-.bal{display:flex;justify-content:space-between;color:var(--dim);font-size:.85rem;padding:6px 2px}
-.bal b{color:var(--txt)}
-.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:18px;margin-top:14px}
-.reveal{text-align:center}
-.reveal .won{font-size:.78rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.statline{display:flex;justify-content:space-between;color:var(--dim);font-size:.85rem;padding:4px 2px}
+.statline b{color:var(--txt)}
+.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:16px;margin-top:14px}
+h2{font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin:26px 0 2px;font-weight:500}
+.reveal{text-align:center;animation:pop .25s ease}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.reveal .won{font-size:.75rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
 .reveal .cash{font-size:2.6rem;font-weight:700;color:var(--grn);line-height:1.1;margin:6px 0}
-.reveal .cash.zero{color:var(--dim);font-size:1.6rem}
-.reveal .player{font-size:1.4rem;font-weight:700;margin-top:10px}
-.reveal .pg{display:inline-block;margin-top:8px;background:var(--grn);color:#fff;border-radius:999px;padding:7px 16px;font-weight:700}
+.reveal .cash.zero{color:var(--dim);font-size:1.5rem}
+.reveal .player{font-size:1.35rem;font-weight:700;margin-top:8px}
+.reveal .pg{display:inline-block;margin-top:8px;background:var(--grn);color:#fff;border-radius:999px;padding:7px 16px;font-weight:700;font-size:.9rem}
+.reveal .pg.wait{background:var(--hair);color:var(--txt)}
 .reveal .fx{color:var(--dim);font-size:.85rem;margin-top:8px}
-.t{border-top:1px solid var(--hair);padding:12px 2px;font-size:.9rem}
-.t .l1{display:flex;justify-content:space-between;font-weight:500}
+.t{border-top:1px solid var(--hair);padding:12px 2px;font-size:.92rem}
+.t:first-child{border-top:none;padding-top:2px}
+.t .l1{display:flex;justify-content:space-between;gap:8px;font-weight:500}
 .t .l2{color:var(--dim);font-size:.8rem;margin-top:2px}
 .t .bonus{color:var(--grn);font-weight:700}
-.note{color:var(--dim);text-align:center;padding:30px 0;font-size:.9rem}
+input{width:100%;padding:13px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;font-size:1rem;margin-top:10px}
+input::placeholder{color:var(--dim)}
+.note{color:var(--dim);font-size:.9rem}
 .err{border:1px solid var(--red);border-radius:10px;padding:12px;margin-top:12px;font-size:.88rem}
-.small{color:var(--dim);font-size:.75rem;margin-top:18px;line-height:1.5}
+.small{color:var(--dim);font-size:.75rem;margin-top:20px;line-height:1.55}
+.small a{color:var(--grn)}
 .gcnav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,18,25,.97);border-top:1px solid var(--hair);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
 .gcnav a{flex:1;text-align:center;padding:13px 0 11px;color:var(--dim);text-decoration:none;font-size:.78rem;font-weight:500}
 .gcnav a.on{color:var(--grn)}
+/* sheet */
+#sheetbg{position:fixed;inset:0;background:rgba(5,7,10,.7);z-index:45;display:none}
+#sheetbg.open{display:block}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:46;background:var(--panel);border-top:1px solid var(--hair);border-radius:18px 18px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;transform:translateY(105%);transition:transform .25s ease}
+#sheet.open{transform:none}
+#sheet h3{font-size:1.15rem;margin-bottom:4px}
+.fvrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--hair);font-size:.92rem}
+.fvrow button{background:none;border:1px solid var(--hair);color:var(--dim);border-radius:8px;padding:5px 10px;font-family:inherit;cursor:pointer}
+.fvrow .add{background:var(--grn);border:none;color:#fff;font-weight:700}
+#agegate{position:fixed;inset:0;background:rgba(5,7,10,.96);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+#agegate .box{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:22px;max-width:380px;text-align:center}
 </style>
 </head>
 <body>
-<div id="agegate" style="position:fixed;inset:0;background:rgba(5,7,10,.96);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:22px;max-width:380px;text-align:center">
-    <div style="font-weight:700;font-size:1.2rem">18+ only</div>
-    <p style="color:var(--dim);font-size:.9rem;margin:10px 0 16px">GOALCASH is a prize draw open to Great Britain residents aged 18 or over. A free postal entry route is available — see the <a href="/goalcash-rules.html" style="color:var(--grn)">full rules</a>.</p>
-    <button class="buy" style="margin:0;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
-  </div>
-</div>
+<div id="agegate"><div class="box">
+  <div style="font-weight:700;font-size:1.2rem">18+ only</div>
+  <p class="note" style="margin:10px 0 16px">GOALCASH is a prize draw open to Great Britain residents aged 18 or over. A free postal entry route is available — see the <a href="/goalcash-rules.html" style="color:var(--grn)">full rules</a>.</p>
+  <button class="buy" style="margin:0;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
+</div></div>
+
 <div class="wrap">
-  <header>
-    <h1>GOAL<em>CASH</em></h1>
-    <div class="sub" id="sub">Prototype — demo wallet, no real money. <span id="poolinfo"></span></div>
-  </header>
-  <div class="bal" style="font-size:1rem;padding:4px 2px"><span>Balance <b id="balance">—</b></span><span id="balhint" style="font-size:.78rem;color:var(--dim)">sign in for £10 demo credit</span></div>
+  <div class="topbar">
+    <div class="brand">GOAL<em>CASH</em></div>
+    <button class="pill" id="topAcct">Sign in</button>
+  </div>
+  <div class="sub" id="poolinfo">Prototype — demo credit, no real money.</div>
   <button class="buy" id="buy">BUY TICKET — £1</button>
-  <div class="bal"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
+  <div class="statline"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
   <div id="reveal"></div>
-  <h2 style="margin-top:26px;font-size:1rem">Your clubs</h2>
-  <div class="card" id="favcard">
-    <div id="favs" style="font-size:.9rem;color:var(--dim)">No favourite clubs yet.</div>
-    <input id="favq" type="text" placeholder="Search a club to follow" autocomplete="off" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:10px">
+
+  <h2>Your tickets</h2>
+  <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
+
+  <h2>Your clubs</h2>
+  <div class="card">
+    <div id="favs" class="note">No favourite clubs yet — search below to follow.</div>
+    <input id="favq" type="text" placeholder="Search a club to follow" autocomplete="off">
     <div id="favres"></div>
   </div>
-  <div class="card" id="acct">
-    <div id="acctOut" style="font-size:.9rem;color:var(--dim)">Checking account…</div>
-    <div id="acctForm" hidden>
-      <input id="email" type="email" placeholder="Email for your account" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:10px">
-      <input id="code" type="text" inputmode="numeric" placeholder="6-digit code from your email" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:8px" hidden>
-      <button class="buy" id="acctBtn" style="font-size:1rem;padding:13px;margin-top:8px">Send sign-in code</button>
-    </div>
-  </div>
-  <h2 style="margin-top:26px;font-size:1rem">Your tickets</h2>
-  <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
-  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (\u22481h before kickoff) \u2014 position decides your per-goal rate. Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.<br><br><b>Play for free by post</b> — every postal entry gets the identical draw, same prizes, no purchase needed.<br><br>
-<a href="/goalcash-howto.html" style="color:var(--grn)">How to play</a> \u00b7 <a href="/goalcash-rules.html" style="color:var(--grn)">Terms &amp; free entry</a> \u00b7 <a href="/goalcash-privacy.html" style="color:var(--grn)">Privacy</a> \u00b7 18+ \u00b7 GB residents \u00b7 <a href="https://www.begambleaware.org" style="color:var(--grn)">BeGambleAware.org</a></div>
+
+  <div class="small">Every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — position decides your per-goal rate: GK £250, DEF £25, MID £5, FWD £2. Goals settle automatically from the official match timeline.<br><br>
+  <b style="color:var(--txt)">Play for free by post</b> — identical draw, same prizes, no purchase needed.<br>
+  <a href="/goalcash-howto.html">How to play</a> · <a href="/goalcash-rules.html">Terms &amp; free entry</a> · <a href="/goalcash-privacy.html">Privacy</a> · 18+ · GB residents · <a href="https://www.begambleaware.org">BeGambleAware.org</a></div>
 </div>
+
+<div id="sheetbg"></div>
+<div id="sheet">
+  <h3>Account</h3>
+  <div id="acctOut" class="note">Checking…</div>
+  <div id="acctForm" hidden>
+    <input id="email" type="email" placeholder="Email" autocomplete="email">
+    <input id="code" type="text" inputmode="numeric" placeholder="6-digit code from your email" hidden>
+    <button class="buy" id="acctBtn" style="font-size:1rem;padding:13px;margin-top:10px">Send sign-in code</button>
+  </div>
+</div>
+
+<nav class="gcnav">
+  <a href="/goalcash.html" class="on">Play</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a>
+</nav>
+
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const fmt=p=>'\u00a3'+(p/100).toFixed(2).replace(/\.00$/,'');
+const gmtD=k=>new Date(k).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'});
+const gmtT=k=>new Date(k).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'});
 let uk=localStorage.getItem('gc_user');
 if(!uk){uk='u_'+Math.random().toString(36).slice(2,12);localStorage.setItem('gc_user',uk);}
-let sbc=null,session=null;
+if(localStorage.getItem('gc_18'))$('agegate').style.display='none';
+
+let sbc=null,session=null,cfgOk=false;
+function sheet(open){$('sheet').classList.toggle('open',open);$('sheetbg').classList.toggle('open',open);}
+$('sheetbg').onclick=()=>sheet(false);
+$('topAcct').onclick=()=>sheet(true);
+function hdrs(){return session?{Authorization:'Bearer '+session.access_token}:{};}
+
 async function initAuth(){
   try{
     const cfg=await (await fetch('/api/gc-config')).json();
-    if(!cfg.url||!cfg.anon){$('acctOut').textContent='Accounts not configured yet.';return;}
+    if(!cfg.url||!cfg.anon){
+      $('acctOut').innerHTML='<span style="color:var(--red)">Sign-in isn\u2019t switched on yet.</span> Add SUPABASE_ANON_KEY in Vercel (the anon public key from Supabase \u2192 Settings \u2192 API), then Redeploy.';
+      return;
+    }
+    cfgOk=true;
     sbc=supabase.createClient(cfg.url,cfg.anon);
     const {data}=await sbc.auth.getSession();
-    session=data.session;
-    renderAcct();
-    sbc.auth.onAuthStateChange((_e,s)=>{session=s;renderAcct();if(s)claimAnon();});
-  }catch(e){$('acctOut').textContent='Accounts unavailable.';}
+    session=data.session;renderAcct();
+    sbc.auth.onAuthStateChange((_e,s)=>{session=s;renderAcct();if(s){claim();load();}});
+  }catch(e){$('acctOut').textContent='Accounts unavailable right now.';}
 }
 function renderAcct(){
-  if(session){$('acctOut').innerHTML='Signed in as <b style="color:var(--txt)">'+esc(session.user.email)+'</b> — tickets follow your account on any device. <a href="#" id="sout" style="color:var(--grn)">Sign out</a>';
+  if(session){
+    $('topAcct').textContent='\u00a3\u2026';$('topAcct').className='pill ghost';
+    $('acctOut').innerHTML='Signed in as <b>'+esc(session.user.email)+'</b>. Balance and tickets follow this account on any device.<br><br><a href="#" id="sout" style="color:var(--red)">Sign out</a>';
     $('acctForm').hidden=true;
-    document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();};
-  }else{$('acctOut').textContent='Sign in to play \u2014 new accounts get \u00a310 demo credit.';$('acctForm').hidden=false;$('balance').textContent='\u2014';$('balhint').textContent='sign in for \u00a310 demo credit';}
-}
-async function claimAnon(){
-  try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});load();loadFavs();}catch(e){}
-}
-document.addEventListener('click',e=>{
-  if(e.target&&e.target.id==='acctBtn'){
-    e.preventDefault();
-    const em=$('email').value.trim();
-    if($('code').hidden){
-      if(!em)return;
-      sbc.auth.signInWithOtp({email:em}).then(({error})=>{
-        if(error){$('acctOut').textContent=error.message;return;}
-        $('code').hidden=false;$('acctBtn').textContent='Verify code';
-        $('acctOut').textContent='Code sent to '+em+' — check your inbox.';
-      });
-    }else{
-      sbc.auth.verifyOtp({email:em,token:$('code').value.trim(),type:'email'}).then(({error})=>{
-        if(error)$('acctOut').textContent=error.message;
-      });
-    }
+    document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();sheet(false);};
+  }else{
+    $('topAcct').textContent='Sign in';$('topAcct').className='pill';
+    $('acctOut').textContent=cfgOk?'New accounts get \u00a310 demo credit.':'Checking\u2026';
+    $('acctForm').hidden=!cfgOk;
   }
-});
-function hdrs(){return session?{Authorization:'Bearer '+session.access_token}:{};}
-const fmt=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
+}
+$('acctBtn').onclick=async()=>{
+  const em=$('email').value.trim();
+  if(!em)return;
+  if($('code').hidden){
+    const {error}=await sbc.auth.signInWithOtp({email:em});
+    if(error){$('acctOut').textContent=error.message;return;}
+    $('code').hidden=false;$('acctBtn').textContent='Verify code';
+    $('acctOut').textContent='Code sent to '+em+' \u2014 check your inbox (and spam).';
+  }else{
+    const {error}=await sbc.auth.verifyOtp({email:em,token:$('code').value.trim(),type:'email'});
+    if(error)$('acctOut').textContent=error.message;else sheet(false);
+  }
+};
+async function claim(){try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:hdrs()});}catch(e){}}
 
 async function poolInfo(){
-  try{const j=await (await fetch('/api/gc?action=pool')).json();
-    $('poolinfo').textContent=j.fixtures?j.fixtures+' trackable fixtures in the next '+j.window_h+' hours.':'No eligible fixtures right now.';
+  try{
+    const j=await (await fetch('/api/gc?action=pool')).json();
+    $('poolinfo').textContent='Prototype \u2014 demo credit, no real money. '+(j.fixtures?j.fixtures+' trackable fixtures in the next '+j.window_h+' hours.':'No eligible fixtures right now.');
     if(!j.fixtures){$('buy').disabled=true;$('buy').textContent='NO TRACKABLE FIXTURES IN WINDOW';}
   }catch(e){}
 }
 $('buy').onclick=async()=>{
-  if(!session){document.getElementById('acct').scrollIntoView({behavior:'smooth'});$('acctOut').textContent='Sign in to play \u2014 new accounts get \u00a310 demo credit.';return;}
+  if(!session){sheet(true);return;}
   $('buy').disabled=true;$('buy').textContent='Drawing\u2026';
   try{
     const r=await fetch('/api/gc?action=buy',{method:'POST',headers:hdrs()});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     const t=j.ticket;
-    if(j.balance_pence!=null)$('balance').textContent=fmt(j.balance_pence);
-    const when=new Date(t.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})+' '+new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
+    if(j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">${t.cash_pence?'GREAT! YOU\u2019VE WON':'NO INSTANT WIN \u2014 BUT YOU\u2019RE IN THE GAME'}</div>
       <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'\u00a30 instant'}</div>
       ${t.player_name?`<div class="player">${esc(t.player_name)}</div>
       <div class="fx">${esc(t.team_name)} \u00b7 ${esc(t.fixture)}</div>
-      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL</div>`:`<div class="player">${esc(t.fixture)}</div>
-      <div class="pg" style="background:var(--hair);color:var(--txt)">PLAYER ALLOCATED WHEN THE TEAM SHEET DROPS</div>
+      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL</div>`
+      :`<div class="player">${esc(t.fixture)}</div>
+      <div class="pg wait">PLAYER ALLOCATED WHEN THE TEAM SHEET DROPS</div>
       <div class="fx">Your random player comes from the confirmed XIs \u2014 usually \u22481 hour before kickoff. Check back.</div>`}
-      <div class="fx">${when} kickoff</div>
+      <div class="fx">${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT kickoff</div>
     </div>`;
     load();
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
   $('buy').disabled=false;$('buy').textContent='BUY TICKET \u2014 \u00a31';
 };
+
 async function load(){
   try{
     const j=await (await fetch('/api/gc?action=tickets&user='+uk,{headers:hdrs()})).json();
     $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
-    if(j.balance_pence!=null){$('balance').textContent=fmt(j.balance_pence);$('balhint').textContent='demo credit';}
-    if(!j.tickets.length)return;
+    if(session&&j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
+    if(!j.tickets||!j.tickets.length){$('tickets').innerHTML='<div class="note">No tickets yet.</div>';return;}
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
       <div class="l1"><span>${t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
       <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">open</span>'}</span></div>
-      <div class="l2">${esc(t.fixture)} \u00b7 ${new Date(t.kickoff).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'GMT'})} ${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT${t.player_name?' \u00b7 '+fmt(t.per_goal_pence)+'/goal':''}</div>
+      <div class="l2">${esc(t.fixture)} \u00b7 ${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT${t.player_name?' \u00b7 '+fmt(t.per_goal_pence)+'/goal':''}</div>
     </div>`).join('');
   }catch(e){}
 }
-if(localStorage.getItem('gc_18'))document.getElementById('agegate').style.display='none';
+
 let favTimer=null;
 $('favq').oninput=()=>{
   clearTimeout(favTimer);
@@ -181,8 +223,8 @@ $('favq').oninput=()=>{
     try{
       const r=await fetch('/api/tsa?path='+encodeURIComponent('/football/teams?search='+q+'&per_page=6'));
       const j=await r.json();
-      $('favres').innerHTML=(j.data||[]).map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid var(--hair);font-size:.9rem"><span>${esc(t.name)} <span style="color:var(--dim)">${esc(t.country||'')}</span></span><button data-id="${t.id}" data-name="${esc(t.name)}" class="favadd" style="background:var(--grn);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:inherit;font-weight:700;cursor:pointer">\u2605</button></div>`).join('');
-      document.querySelectorAll('.favadd').forEach(b=>b.onclick=async()=>{
+      $('favres').innerHTML=(j.data||[]).map(t=>`<div class="fvrow"><span>${esc(t.name)} <span class="note">${esc(t.country||'')}</span></span><button class="add" data-id="${t.id}" data-name="${esc(t.name)}">\u2605</button></div>`).join('');
+      document.querySelectorAll('.fvrow .add').forEach(b=>b.onclick=async()=>{
         await fetch('/api/gc?action=fav_add&user='+uk+'&team_id='+b.dataset.id+'&team_name='+encodeURIComponent(b.dataset.name),{method:'POST',headers:hdrs()});
         $('favq').value='';$('favres').innerHTML='';loadFavs();
       });
@@ -193,14 +235,13 @@ async function loadFavs(){
   try{
     const j=await (await fetch('/api/gc?action=fav_list&user='+uk,{headers:hdrs()})).json();
     if(!j.favs||!j.favs.length){$('favs').innerHTML='No favourite clubs yet \u2014 search below to follow.';return;}
-    $('favs').innerHTML=j.favs.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--hair)"><span><b style="color:var(--txt)">${esc(f.team_name)}</b><br><span style="font-size:.8rem">${f.next?esc(f.next.fixture)+' \u00b7 '+new Date(f.next.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})+' '+new Date(f.next.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT':'No upcoming fixture found'}</span></span><button data-id="${f.team_id}" class="favdel" style="background:none;border:1px solid var(--hair);color:var(--dim);border-radius:8px;padding:5px 10px;font-family:inherit;cursor:pointer">\u2715</button></div>`).join('');
-    document.querySelectorAll('.favdel').forEach(b=>b.onclick=async()=>{
+    $('favs').innerHTML=j.favs.map(f=>`<div class="fvrow"><span><b>${esc(f.team_name)}</b><br><span class="note" style="font-size:.8rem">${f.next?esc(f.next.fixture)+' \u00b7 '+gmtD(f.next.kickoff)+' '+gmtT(f.next.kickoff)+' GMT':'No upcoming fixture found'}</span></span><button data-id="${f.team_id}">\u2715</button></div>`).join('');
+    document.querySelectorAll('#favs .fvrow button').forEach(b=>b.onclick=async()=>{
       await fetch('/api/gc?action=fav_del&user='+uk+'&team_id='+b.dataset.id,{method:'POST',headers:hdrs()});loadFavs();
     });
   }catch(e){}
 }
-poolInfo();load();initAuth();loadFavs();
+poolInfo();load();loadFavs();initAuth();
 </script>
-<nav class="gcnav"><a href="/goalcash.html" class="on">Play</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a></nav>
 </body>
 </html>
