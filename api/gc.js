@@ -21,20 +21,47 @@ async function tsa(path) {
 }
 let covCache = null;
 async function coveredComps() {
-  if (covCache && Date.now() - covCache.at < 6 * 36e5) return covCache.s;
-  const s = new Set();
+  if (covCache && Date.now() - covCache.at < 6 * 36e5) return covCache;
+  const s = new Set(), names = {};
   for (let p = 1; p <= 2; p++) {
     const r = await tsa(`/coverage/leagues?data_type=lineups&per_page=200&page=${p}`);
-    r.data.forEach(c => { const lu = c.data_types && c.data_types.lineups; if (lu && lu.available) s.add(c.id); });
+    r.data.forEach(c => { const lu = c.data_types && c.data_types.lineups;
+      if (lu && lu.available) { s.add(c.id); names[c.id] = ((c.country || '') + ' ' + (c.name || '')).trim(); } });
     if (p >= (r.meta.total_pages || 1)) break;
   }
-  covCache = { at: Date.now(), s };
-  return s;
+  covCache = { at: Date.now(), s, names };
+  return covCache;
+}
+function compTier(name) {
+  const n = (name || '').toLowerCase();
+  if (/u-?1\d|u-?2[0-3]|youth|junior/.test(n)) return 5;
+  if (/world cup|champions league|premier league/.test(n)) return 100;
+  if (/la liga|serie a|bundesliga|ligue 1|europa/.test(n)) return 80;
+  if (/championship|eredivisie|primeira|scottish prem|fa cup|efl|carabao|copa del rey|dfb|coppa/.test(n)) return 60;
+  if (/qualif|nations league|internation/.test(n)) return 45;
+  return 10;
+}
+async function autoPickBig() {
+  const { names } = await coveredComps();
+  const f = await upcomingFixtures();
+  if (!f.length) return null;
+  let best = null, bestScore = -1e9;
+  const now = Date.now();
+  for (const m of f) {
+    const hrs = (new Date(m.kickoff).getTime() - now) / 36e5;
+    const score = compTier(names[m.competition_id]) - hrs * 0.3;
+    if (score > bestScore) { bestScore = score; best = m; }
+  }
+  if (!best) return null;
+  const val = { match_id: best.id, fixture: best.home + ' v ' + best.away, kickoff: best.kickoff, auto: true };
+  await fetch(SB + '/rest/v1/gc_config', { method: 'POST', headers: { ...sbH, Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify([{ key: 'featured', value: val }]) }).catch(() => {});
+  return val;
 }
 let fxCache = null;
 async function upcomingFixtures() {
   if (fxCache && Date.now() - fxCache.at < 15 * 6e4) return fxCache.f;
-  const covered = await coveredComps();
+  const covered = (await coveredComps()).s;
   const d0 = new Date().toISOString().slice(0, 10);
   const d1 = new Date(Date.now() + SALE_WINDOW_H * 36e5).toISOString().slice(0, 10);
   let all = [];
@@ -45,7 +72,7 @@ async function upcomingFixtures() {
   }
   const now = Date.now();
   const f = all.filter(m => covered.has(m.competition_id) && new Date(m.utc_date).getTime() > now)
-    .map(m => ({ id: m.id, kickoff: m.utc_date, home: m.home_team.name, away: m.away_team.name }));
+    .map(m => ({ id: m.id, kickoff: m.utc_date, home: m.home_team.name, away: m.away_team.name, competition_id: m.competition_id }));
   fxCache = { at: Date.now(), f };
   return f;
 }
@@ -91,7 +118,8 @@ module.exports = async (req, res) => {
   try {
     if (action === 'pool') {
       const f = await upcomingFixtures();
-      const feat = await getFeatured();
+      let feat = await getFeatured();
+      if (!feat) feat = await autoPickBig(); // self-healing: always a Big Match when fixtures exist
       res.setHeader('Cache-Control', 's-maxage=120');
       return res.status(200).json({ fixtures: f.length, window_h: SALE_WINDOW_H, featured: feat });
     }
@@ -100,7 +128,7 @@ module.exports = async (req, res) => {
       if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
       const big = req.query.kind === 'big';
       let feat = null;
-      if (big) { feat = await getFeatured(); if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' }); }
+      if (big) { feat = await getFeatured() || await autoPickBig(); if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' }); }
       const f = await upcomingFixtures();
       if (!big && !f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
       const draw = drawCash();
