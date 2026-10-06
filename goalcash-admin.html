@@ -49,6 +49,7 @@ $('go').onclick=async()=>{
       <div class="kpi"><b>${fmt(j.revenue_pence)}</b><span>Revenue</span></div>
       <div class="kpi"><b>${fmt(j.instant_paid_pence)}</b><span>Instant paid</span></div>
       <div class="kpi"><b>${fmt(j.bonus_paid_pence)}</b><span>Goal bonuses</span></div>
+      <div class="kpi"><b>${j.wallet_liability_pence!=null?fmt(j.wallet_liability_pence):'\u2013'}</b><span>Wallet liability</span></div>
     </div>
     <p class="dim" style="margin-top:10px">${j.unsettled} tickets unsettled (settle lazily when holders check, or after tonight's games).</p>
     <table><thead><tr><th>Pos</th><th>Tickets</th><th>Goals</th><th>Bonus paid</th></tr></thead><tbody>${bp}</tbody></table>
