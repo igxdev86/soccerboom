@@ -2,8 +2,8 @@
 // Actions: state, daily (POST), claim (POST,&code=), spin (POST), mkcode (secret)
 const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY;
 const sbH = { apikey: SK, Authorization: 'Bearer ' + SK, 'Content-Type': 'application/json' };
-const STAKE = 10; // notional stake per free spin (pence) — sets prize scale; EV ~9.5p/spin at 94.6% RTP
-const DAILY_SPINS = 5;
+const TICKET_PRICE = 100;
+const DAILY_SPINS = 5; // free tickets per day — the online promo route; postal is the formal free route
 // GOALRUSH SLOT core — 5x3, 10 lines, left-to-right
 const SYM = { W:'\u2b50', SC:'\ud83c\udfc6', GOAL:'\u26bd', RED:'\ud83d\udfe5', BOOT:'\ud83d\udc5f', GLOVE:'\ud83e\uddf4', YEL:'\ud83d\udfe8', SHIRT:'\ud83d\udc55', WHIS:'\ud83d\udce3' };
 // Reel strips (weights by repetition). Tuned by simulation.
@@ -70,8 +70,9 @@ module.exports = async (req, res) => {
   try {
     if (action === 'state') {
       const r = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=spins,won_pence`, { headers: sbH })).json();
+      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ spins: r[0] ? r[0].spins : 0, won_pence: r[0] ? (r[0].won_pence || 0) : 0 });
+      return res.status(200).json({ spins: r[0] ? r[0].spins : 0, won_pence: r[0] ? (r[0].won_pence || 0) : 0, balance_pence: w[0] ? w[0].balance_pence : 0 });
     }
     if (action === 'daily') {
       const code = 'DAILY-' + new Date().toISOString().slice(0, 10);
@@ -96,34 +97,21 @@ module.exports = async (req, res) => {
       await addSpins(user, c.spins);
       return res.status(200).json({ granted: c.spins, spins: await spins(user) });
     }
+    if (action === 'series') {
+      const s = await (await fetch(SB + "/rest/v1/gc_slot_series?active=eq.true&select=*&limit=1", { headers: sbH })).json();
+      if (!s[0]) return res.status(404).json({ error: 'No active series.' });
+      res.setHeader('Cache-Control', 's-maxage=60');
+      return res.status(200).json({ series: { id: s[0].id, name: s[0].name, price_pence: s[0].price_pence, total: s[0].total, sold: s[0].sold, prizes_left: s[0].prizes_left } });
+    }
     if (action === 'spin') {
-      const dec = await fetch(SB + '/rest/v1/rpc/gc_use_spin', { method: 'POST', headers: sbH, body: JSON.stringify({ p_user: user }) });
-      const ok = dec.ok && (await dec.json()) === true;
-      if (!ok) return res.status(402).json({ error: 'No spins left \u2014 claim a code.' });
-      const all = [];
-      let g = spinGrid(Math.random), r0 = evaluate(g, STAKE, Math.random);
-      all.push({ grid: g, win: r0.win, varMult: r0.varMult, scatters: r0.scatters, hits: r0.hits });
-      if (r0.frees) {
-        let fs = 8, played = 0;
-        while (played < fs && played < 20) {
-          played++;
-          const fg = spinGrid(Math.random), fr = evaluate(fg, STAKE, Math.random);
-          const w = fr.win * 2;
-          all.push({ grid: fg, win: w, varMult: fr.varMult, free: true, hits: fr.hits });
-          const reds = fg.flat().filter(s => s === 'RED').length;
-          if (reds >= 2) fs = Math.min(20, fs + 1);
-          if (fr.frees) fs = Math.min(20, fs + 4);
-        }
-      }
-      const total = all.reduce((s, x) => s + x.win, 0);
-      let wonTotal = 0;
-      if (total > 0) {
-        const r = await fetch(SB + '/rest/v1/rpc/gc_slot_win', { method: 'POST', headers: sbH,
-          body: JSON.stringify({ p_user: user, p_amount: total }) });
-        if (r.ok) wonTotal = await r.json();
-      }
-      if (!wonTotal) { const r2 = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=won_pence`, { headers: sbH })).json(); wonTotal = r2[0] ? (r2[0].won_pence || 0) : 0; }
-      return res.status(200).json({ spins: await spins(user), sequence: all, total_win: total, won_pence: wonTotal });
+      // Predetermined instant-win draw: outcome allocated server-side from the finite pool; reels only display it.
+      const r = await fetch(SB + '/rest/v1/rpc/gc_slot_draw', { method: 'POST', headers: sbH,
+        body: JSON.stringify({ p_user: user, p_price: TICKET_PRICE }) });
+      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 140) + ' \u2014 run the series SQL' });
+      const out = await r.json();
+      if (out.error) return res.status(402).json({ error: out.error === 'insufficient' ? 'No free tickets and balance too low.' : out.error === 'soldout' ? 'This series is sold out \u2014 next series soon.' : out.error });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ prize_pence: out.prize, paid: out.paid, spins: out.free_left, balance_pence: out.balance, won_pence: out.won, remaining: out.remaining });
     }
     if (action === 'mkcode') {
       if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
