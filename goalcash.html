@@ -91,7 +91,7 @@ input::placeholder{color:var(--dim)}
     <div id="favres"></div>
   </div>
 
-  <div class="small">Every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — every ticket wins cash (4p minimum), and your player's match events multiply that win: goal ×10, yellow card ×3, red card ×20, all cumulative. Settled automatically from the official match timeline.<br><br>
+  <div class="small">Every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — every ticket wins cash (4p minimum). Prizes up to £10 come with a player whose match events multiply your win — goal ×10, yellow ×3, red ×20, cumulative. Jackpot instants of £25, £50 and £100 are pure cash, banked on the spot. Settled automatically from the official match timeline.<br><br>
   <b style="color:var(--txt)">Play for free by post</b> — identical draw, same prizes, no purchase needed.<br>
   <a href="/goalcash-howto.html">How to play</a> · <a href="/goalcash-rules.html">Terms &amp; free entry</a> · <a href="/goalcash-privacy.html">Privacy</a> · 18+ · GB residents · <a href="https://www.begambleaware.org">BeGambleAware.org</a></div>
 </div>
@@ -209,7 +209,7 @@ async function load(){
     if(session&&j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
     if(!j.tickets||!j.tickets.length){$('tickets').innerHTML='<div class="note">No tickets yet.</div>';return;}
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
-      <div class="l1"><span>${t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
+      <div class="l1"><span>${!t.fixture?'<span class="bonus">Jackpot instant</span>':t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
       <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.bonus_pence?'<span class="bonus">'+[t.goals?t.goals+'g':'',t.cards?t.cards+'yc':'',t.reds?t.reds+'rc':''].filter(Boolean).join(' ')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">no events</span>'):'<span style="color:var(--dim)">open</span>'}</span></div>
       <div class="l2">${esc(t.fixture)} \u00b7 ${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT${t.player_name?' \u00b7 '+fmt(t.per_goal_pence)+'/goal':''}</div>
     </div>`).join('');
