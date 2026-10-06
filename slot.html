@@ -73,7 +73,7 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
     <button class="spin" style="width:100%;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
   </div>
 </div>
-<div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. No purchase necessary, ever. 18+, GB residents.<br><a href="/">← GOALRUSH home</a> · <a href="/goalcash.html">Play Match Packs</a></div>
+<div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. No purchase necessary, ever. 18+, GB residents.<br><a href="/">← Home</a></div>
 <div id="ov"><div class="box" id="ovbox"></div></div>
 <script>
 "use strict";
@@ -144,7 +144,7 @@ el('pt').onclick=()=>{
   overlay('<h2>PAYTABLE</h2><table>'+['W','GOAL','RED','BOOT','GLOVE','YEL','SHIRT','WHIS'].map(s=>row(s,PAYS[s])).join('')+'<tr><td>'+SYM.SC+' 3/4/5 scatter</td><td>3 / 15 / 100× stake + FREE GAMES</td></tr></table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">10 lines · ⭐ wild · 10p stake equivalent · 3+ '+SYM.SC+' = 8 free games all ×2 · VAR CHECK can upgrade any result</p>');
 };
 async function state(){
-  try{const j=await (await fetch('/api/slot?action=state&user='+uk)).json();spinsLeft=j.spins||0;won=j.balance_pence||0;meters();}catch(e){}
+  try{const j=await (await fetch('/api/slot?action=state&user='+uk)).json();spinsLeft=j.spins||0;won=j.won_pence||0;meters();}catch(e){}
 }
 async function grant(url,btn){
   btn.disabled=true;
@@ -183,9 +183,9 @@ el('spin').onclick=async()=>{
       if(i>0)await new Promise(r=>setTimeout(r,350));
     }
     el('fsbar').style.display='none';
-    won=j.balance_pence;meters();
+    won=j.won_pence;meters();
     if(j.total_win>=200)overlay('<h2>'+(j.total_win>=500?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(j.total_win)+'</div>',1800);
-    el('msg').textContent=j.total_win>0?'WON '+fmt(j.total_win)+' — credited to your GOALRUSH balance':'No win — spin again';
+    el('msg').textContent=j.total_win>0?'WON '+fmt(j.total_win):'No win — spin again';
   }catch(e){el('msg').textContent=e.message;}
   spinning=false;meters();
 };
