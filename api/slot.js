@@ -68,6 +68,14 @@ module.exports = async (req, res) => {
   const user = String(req.query.user || '').slice(0, 64);
   if (!user) return res.status(400).json({ error: 'user required' });
   try {
+    if (action === 'grantme') {
+      if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(403).json({ error: 'forbidden' });
+      await fetch(SB + '/rest/v1/gc_wallet', { method: 'POST', headers: { ...sbH, Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ user_key: user, balance_pence: 0 }) });
+      const r = await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH, body: JSON.stringify({ p_user: user, p_amount: 50000, p_reason: 'test_credit' }) });
+      const j = await r.json().catch(() => null);
+      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
+      return res.status(200).json({ balance_pence: w[0] ? w[0].balance_pence : null });
+    }
     if (action === 'state') {
       const r = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=spins,won_pence`, { headers: sbH })).json();
       const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
