@@ -41,7 +41,7 @@ async function loadFeatured(){
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     let html='<h3 style="font-size:1rem;margin:10px 0 4px;color:var(--grn)">Big Match</h3>';
-    html+=j.featured?`<p>Current: <b>${esc(j.featured.fixture)}</b> <button data-clear="1" class="feat" style="width:auto;padding:6px 12px;margin-left:8px;background:var(--red)">Clear</button></p>`:'<p class="dim">None set.</p>';
+    html+=j.featured?`<p>Current: <b>${esc(j.featured.fixture)}</b>${j.featured.auto?' <span class="dim">(auto-picked)</span>':''} <button data-clear="1" class="feat" style="width:auto;padding:6px 12px;margin-left:8px;background:var(--red)">Clear</button></p>`:'<p class="dim">None set — auto-pick selects one when the game page is next loaded. Feature below to override.</p>';
     html+='<table><thead><tr><th>Fixture</th><th>KO (GMT)</th><th></th></tr></thead><tbody>';
     html+=j.fixtures.slice(0,30).map(f=>`<tr><td>${esc(f.home)} v ${esc(f.away)}</td><td>${new Date(f.kickoff).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit',timeZone:'GMT'})}</td><td><button data-mid="${f.id}" class="feat" style="width:auto;padding:5px 10px;margin:0;font-size:.8rem">Feature</button></td></tr>`).join('');
     html+='</tbody></table>';
