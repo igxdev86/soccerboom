@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
       const out = await r.json();
       if (out.error) return res.status(402).json({ error: out.error === 'insufficient' ? 'No free tickets and balance too low.' : out.error === 'soldout' ? 'This series is sold out \u2014 next series soon.' : out.error });
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ prize_pence: out.prize, paid: out.paid, spins: out.free_left, balance_pence: out.balance, won_pence: out.won, remaining: out.remaining });
+      return res.status(200).json({ prize_pence: out.prize, base_pence: out.base || out.prize, mult: out.mult || 1, paid: out.paid, spins: out.free_left, balance_pence: out.balance, won_pence: out.won, remaining: out.remaining });
     }
     if (action === 'mkcode') {
       if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
