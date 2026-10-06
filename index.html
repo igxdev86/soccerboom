@@ -16,6 +16,14 @@ header{display:flex;justify-content:space-between;align-items:center;padding:18p
 .brand{font-weight:700;font-size:1.5rem;letter-spacing:-.02em}
 .brand em{font-style:normal;color:var(--grn)}
 header a.pill{background:var(--grn);color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:10px 18px;border-radius:999px}
+.offer{display:block;position:relative;border-radius:16px;overflow:hidden;border:1px solid #1d5c38;text-decoration:none;color:#fff;margin-top:4px}
+.offer .pitch{position:absolute;inset:0;width:100%;height:100%}
+.otxt{position:relative;padding:26px 20px 18px;background:linear-gradient(180deg,rgba(11,14,19,.15),rgba(11,14,19,.55))}
+.otag{font-size:.7rem;letter-spacing:.16em;font-weight:700;color:#9FE8BC}
+.obig{font-size:2.3rem;font-weight:700;letter-spacing:-.02em;line-height:1.05;margin:6px 0 4px;text-shadow:0 2px 14px rgba(0,0,0,.45)}
+.osub{font-size:.95rem;color:rgba(255,255,255,.92);max-width:420px}
+.obtn{display:inline-block;margin-top:14px;background:#fff;color:#0E3D22;font-weight:700;padding:12px 22px;border-radius:999px}
+.oterms{margin-top:12px;font-size:.66rem;color:rgba(255,255,255,.75);line-height:1.5}
 .hero{padding:34px 0 10px}
 h1{font-size:2.3rem;line-height:1.08;letter-spacing:-.03em;font-weight:700}
 h1 em{font-style:normal;color:var(--grn)}
@@ -53,8 +61,30 @@ footer a{color:var(--grn);text-decoration:none}
     <a class="pill" href="/goalcash.html">Play</a>
   </header>
 
+  <a href="/goalcash.html" class="offer">
+    <svg class="pitch" viewBox="0 0 640 240" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <rect width="640" height="240" fill="#0E3D22"/>
+      <rect width="640" height="240" fill="url(#stripes)"/>
+      <defs><pattern id="stripes" width="80" height="240" patternUnits="userSpaceOnUse"><rect width="40" height="240" fill="rgba(255,255,255,.03)"/></pattern></defs>
+      <g stroke="rgba(255,255,255,.35)" stroke-width="2" fill="none">
+        <line x1="320" y1="0" x2="320" y2="240"/>
+        <circle cx="320" cy="120" r="55"/>
+        <rect x="0" y="45" width="90" height="150"/>
+        <rect x="550" y="45" width="90" height="150"/>
+        <rect x="0" y="85" width="35" height="70"/>
+        <rect x="605" y="85" width="35" height="70"/>
+      </g>
+    </svg>
+    <div class="otxt">
+      <div class="otag">WELCOME OFFER · NO DEPOSIT REQUIRED</div>
+      <div class="obig">£10 FREE CREDIT</div>
+      <div class="osub">Sign up, no card needed — every ticket wins cash and your player multiplies it.</div>
+      <span class="obtn">Claim £10 free →</span>
+      <div class="oterms">18+ · GB residents · New accounts · Demo credit during the preview · Free postal entry route available · T&amp;Cs apply</div>
+    </div>
+  </a>
   <div class="hero">
-    <h1>£1 ticket.<br>Every ticket wins.<br>Your player <em>multiplies it</em>.</h1>
+    <h1>£1 ticket. Every ticket wins.<br>Your player <em>multiplies it</em>.</h1>
     <p>Guaranteed cash on every ticket — then a random footballer from the next 72 hours of live-tracked fixtures multiplies your win: <b style="color:var(--txt)">goal ×10, yellow ×3, red ×20.</b> Settled automatically from the official match feed.</p>
     <a class="cta" href="/goalcash.html">Play GOALRUSH — £1</a>
     <a class="cta2" href="/goalcash-howto.html">How it works</a>
