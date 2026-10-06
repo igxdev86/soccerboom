@@ -63,6 +63,15 @@ async function confirmedPool(matchId) {
     return out.length ? out : null;
   } catch (e) { return null; }
 }
+async function getFeatured() {
+  try {
+    const r = await (await fetch(SB + '/rest/v1/gc_config?key=eq.featured&select=value', { headers: sbH })).json();
+    const f = r[0] && r[0].value;
+    if (!f || !f.kickoff || new Date(f.kickoff).getTime() < Date.now()) return null; // expires at kickoff
+    return f;
+  } catch (e) { return null; }
+}
+
 async function authUser(req) {
   const tok = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (!tok) return null;
@@ -82,21 +91,25 @@ module.exports = async (req, res) => {
   try {
     if (action === 'pool') {
       const f = await upcomingFixtures();
-      res.setHeader('Cache-Control', 's-maxage=600');
-      return res.status(200).json({ fixtures: f.length, window_h: SALE_WINDOW_H });
+      const feat = await getFeatured();
+      res.setHeader('Cache-Control', 's-maxage=120');
+      return res.status(200).json({ fixtures: f.length, window_h: SALE_WINDOW_H, featured: feat });
     }
 
     if (action === 'buy') {
       if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
+      const big = req.query.kind === 'big';
+      let feat = null;
+      if (big) { feat = await getFeatured(); if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' }); }
       const f = await upcomingFixtures();
-      if (!f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
+      if (!big && !f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
       const draw = drawCash();
       let t;
       if (!draw.bonus) {
         // Jackpot instant: pure cash, no fixture, no player, settled at purchase.
         t = { match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
       } else {
-        const fx = pickFrom(f);
+        const fx = big ? { id: feat.match_id, home: feat.fixture.split(' v ')[0], away: feat.fixture.split(' v ')[1] || '', kickoff: feat.kickoff } : pickFrom(f);
         t = { match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
           player_name: null, position: null, team_name: null, per_goal_pence: 0 };
         const xi = await confirmedPool(fx.id);
@@ -211,6 +224,27 @@ module.exports = async (req, res) => {
       await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(anon)}`, { method: 'PATCH', headers: { ...sbH, Prefer: 'return=minimal' }, body: JSON.stringify({ user_key: authed }) });
       await fetch(SB + `/rest/v1/gc_favs?user_key=eq.${encodeURIComponent(anon)}`, { method: 'PATCH', headers: { ...sbH, Prefer: 'return=minimal' }, body: JSON.stringify({ user_key: authed }) }).catch(() => {});
       return res.status(200).json({ claimed: true });
+    }
+
+    if (action === 'upcoming') {
+      if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
+      const f = await upcomingFixtures();
+      return res.status(200).json({ fixtures: f.slice(0, 50), featured: await getFeatured() });
+    }
+
+    if (action === 'feature') {
+      if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
+      if (req.query.clear) {
+        await fetch(SB + '/rest/v1/gc_config?key=eq.featured', { method: 'DELETE', headers: sbH });
+        return res.status(200).json({ featured: null });
+      }
+      const mid = String(req.query.match_id || '');
+      const f = (await upcomingFixtures()).find(x => x.id === mid);
+      if (!f) return res.status(404).json({ error: 'match not in the sale window' });
+      const val = { match_id: f.id, fixture: f.home + ' v ' + f.away, kickoff: f.kickoff };
+      await fetch(SB + '/rest/v1/gc_config', { method: 'POST', headers: { ...sbH, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify([{ key: 'featured', value: val }]) });
+      return res.status(200).json({ featured: val });
     }
 
     if (action === 'admin') {
