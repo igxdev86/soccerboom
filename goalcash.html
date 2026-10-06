@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/goalcash.webmanifest">
+
 <title>GOALCASH — prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0B0E13;--panel:#12161E;--txt:#F2F4F8;--dim:#7C8594;--grn:#27B35B;--red:#E8402A;--hair:#1E2430}
@@ -33,6 +39,9 @@ h1 em{font-style:normal;color:var(--grn)}
 .note{color:var(--dim);text-align:center;padding:30px 0;font-size:.9rem}
 .err{border:1px solid var(--red);border-radius:10px;padding:12px;margin-top:12px;font-size:.88rem}
 .small{color:var(--dim);font-size:.75rem;margin-top:18px;line-height:1.5}
+.gcnav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,18,25,.97);border-top:1px solid var(--hair);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+.gcnav a{flex:1;text-align:center;padding:13px 0 11px;color:var(--dim);text-decoration:none;font-size:.78rem;font-weight:500}
+.gcnav a.on{color:var(--grn)}
 </style>
 </head>
 <body>
@@ -51,6 +60,14 @@ h1 em{font-style:normal;color:var(--grn)}
   <button class="buy" id="buy">BUY TICKET — £1</button>
   <div class="bal"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
   <div id="reveal"></div>
+  <div class="card" id="acct">
+    <div id="acctOut" style="font-size:.9rem;color:var(--dim)">Checking account…</div>
+    <div id="acctForm" hidden>
+      <input id="email" type="email" placeholder="Email for your account" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:10px">
+      <input id="code" type="text" inputmode="numeric" placeholder="6-digit code from your email" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;margin-top:8px" hidden>
+      <button class="buy" id="acctBtn" style="font-size:1rem;padding:13px;margin-top:8px">Send sign-in code</button>
+    </div>
+  </div>
   <h2 style="margin-top:26px;font-size:1rem">Your tickets</h2>
   <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
   <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's fixtures \u2014 confirmed starting XIs once team sheets are in, full squads before that (if your player doesn't get on, they score 0 \u2014 that's the game). Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.<br><br><b>Play for free by post</b> — every postal entry gets the identical draw, same prizes, no purchase needed.<br><br>
@@ -62,6 +79,46 @@ const $=id=>document.getElementById(id);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 let uk=localStorage.getItem('gc_user');
 if(!uk){uk='u_'+Math.random().toString(36).slice(2,12);localStorage.setItem('gc_user',uk);}
+let sbc=null,session=null;
+async function initAuth(){
+  try{
+    const cfg=await (await fetch('/api/gc-config')).json();
+    if(!cfg.url||!cfg.anon){$('acctOut').textContent='Accounts not configured yet.';return;}
+    sbc=supabase.createClient(cfg.url,cfg.anon);
+    const {data}=await sbc.auth.getSession();
+    session=data.session;
+    renderAcct();
+    sbc.auth.onAuthStateChange((_e,s)=>{session=s;renderAcct();if(s)claimAnon();});
+  }catch(e){$('acctOut').textContent='Accounts unavailable.';}
+}
+function renderAcct(){
+  if(session){$('acctOut').innerHTML='Signed in as <b style="color:var(--txt)">'+esc(session.user.email)+'</b> — tickets follow your account on any device. <a href="#" id="sout" style="color:var(--grn)">Sign out</a>';
+    $('acctForm').hidden=true;
+    document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();};
+  }else{$('acctOut').textContent='Sign in to keep your tickets across devices.';$('acctForm').hidden=false;}
+}
+async function claimAnon(){
+  try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});load();}catch(e){}
+}
+document.addEventListener('click',e=>{
+  if(e.target&&e.target.id==='acctBtn'){
+    e.preventDefault();
+    const em=$('email').value.trim();
+    if($('code').hidden){
+      if(!em)return;
+      sbc.auth.signInWithOtp({email:em}).then(({error})=>{
+        if(error){$('acctOut').textContent=error.message;return;}
+        $('code').hidden=false;$('acctBtn').textContent='Verify code';
+        $('acctOut').textContent='Code sent to '+em+' — check your inbox.';
+      });
+    }else{
+      sbc.auth.verifyOtp({email:em,token:$('code').value.trim(),type:'email'}).then(({error})=>{
+        if(error)$('acctOut').textContent=error.message;
+      });
+    }
+  }
+});
+function hdrs(){return session?{Authorization:'Bearer '+session.access_token}:{};}
 const fmt=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
 
 async function poolInfo(){
@@ -73,7 +130,7 @@ async function poolInfo(){
 $('buy').onclick=async()=>{
   $('buy').disabled=true;$('buy').textContent='Drawing\u2026';
   try{
-    const r=await fetch('/api/gc?action=buy&user='+uk,{method:'POST'});
+    const r=await fetch('/api/gc?action=buy&user='+uk,{method:'POST',headers:hdrs()});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     const t=j.ticket;
@@ -91,7 +148,7 @@ $('buy').onclick=async()=>{
 };
 async function load(){
   try{
-    const j=await (await fetch('/api/gc?action=tickets&user='+uk)).json();
+    const j=await (await fetch('/api/gc?action=tickets&user='+uk,{headers:hdrs()})).json();
     $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
     if(!j.tickets.length)return;
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
@@ -102,7 +159,8 @@ async function load(){
   }catch(e){}
 }
 if(localStorage.getItem('gc_18'))document.getElementById('agegate').style.display='none';
-poolInfo();load();
+poolInfo();load();initAuth();
 </script>
+<nav class="gcnav"><a href="/goalcash.html" class="on">Play</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a></nav>
 </body>
 </html>
