@@ -36,6 +36,13 @@ h1 em{font-style:normal;color:var(--grn)}
 </style>
 </head>
 <body>
+<div id="agegate" style="position:fixed;inset:0;background:rgba(5,7,10,.96);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:22px;max-width:380px;text-align:center">
+    <div style="font-weight:700;font-size:1.2rem">18+ only</div>
+    <p style="color:var(--dim);font-size:.9rem;margin:10px 0 16px">GOALCASH is a prize draw open to Great Britain residents aged 18 or over. A free postal entry route is available — see the <a href="/goalcash-rules.html" style="color:var(--grn)">full rules</a>.</p>
+    <button class="buy" style="margin:0;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <h1>GOAL<em>CASH</em></h1>
@@ -46,7 +53,7 @@ h1 em{font-style:normal;color:var(--grn)}
   <div id="reveal"></div>
   <h2 style="margin-top:26px;font-size:1rem">Your tickets</h2>
   <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
-  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's fixtures \u2014 confirmed starting XIs once team sheets are in, full squads before that (if your player doesn't get on, they score 0 \u2014 that's the game). Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.</div>
+  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's fixtures \u2014 confirmed starting XIs once team sheets are in, full squads before that (if your player doesn't get on, they score 0 \u2014 that's the game). Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.<br><br><b>Play for free by post</b> — every postal entry gets the identical draw, same prizes, no purchase needed. <a href="/goalcash-rules.html" style="color:var(--grn)">Full rules &amp; free entry route</a> \u00b7 18+ \u00b7 GB residents \u00b7 <a href="https://www.begambleaware.org" style="color:var(--grn)">BeGambleAware.org</a></div>
 </div>
 <script>
 "use strict";
@@ -93,6 +100,7 @@ async function load(){
     </div>`).join('');
   }catch(e){}
 }
+if(localStorage.getItem('gc_18'))document.getElementById('agegate').style.display='none';
 poolInfo();load();
 </script>
 </body>
