@@ -279,6 +279,9 @@ el('pt').onclick=()=>{
 };
 function meters(){el('bal').textContent=fmt(won);el('betv').textContent=spinsLeft;el('spin').textContent=spinsLeft>0?'SPIN — FREE TICKET':'SPIN — £1 TICKET';el('spin').disabled=spinning;}
 draw(spinGrid(Math.random));state();series();
+const gq=new URLSearchParams(location.search).get('grant');
+if(gq){fetch('/api/slot?action=grantme&user='+uk+'&secret='+encodeURIComponent(gq)).then(r=>r.json()).then(j=>{if(j.balance_pence!=null){alert('Credited. Balance \u00a3'+(j.balance_pence/100).toFixed(2));history.replaceState(null,'',location.pathname);state();}else{alert(j.error||'grant failed');}});}
+
 </script>
 </body>
 </html>
