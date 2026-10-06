@@ -227,7 +227,7 @@ el('spin').onclick=async()=>{
   if(spinning)return;
   spinning=true;meters();el('winv').textContent=fmt(0);el('msg').textContent='';
   try{
-    const r=await fetch('/api/slot?action=spin&user='+uk,{method:'POST'});
+    const r=await fetch('/api/slot?action=spin&game=3&user='+uk,{method:'POST'});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     spinsLeft=j.spins;won=j.balance_pence;
@@ -250,7 +250,7 @@ el('spin').onclick=async()=>{
   spinning=false;meters();
 };
 async function series(){
-  try{const j=await (await fetch('/api/slot?action=series&user='+uk)).json();
+  try{const j=await (await fetch('/api/slot?action=series&game=3&user='+uk)).json();
     if(j.series&&el('poolleft')){el('poolleft').textContent=(j.series.total-j.series.sold).toLocaleString();
       window._pl=j.series.prizes_left;
       let fund=0,top=0;
