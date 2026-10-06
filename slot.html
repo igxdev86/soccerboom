@@ -144,7 +144,7 @@ el('pt').onclick=()=>{
   overlay('<h2>PAYTABLE</h2><table>'+['W','GOAL','RED','BOOT','GLOVE','YEL','SHIRT','WHIS'].map(s=>row(s,PAYS[s])).join('')+'<tr><td>'+SYM.SC+' 3/4/5 scatter</td><td>3 / 15 / 100× stake + FREE GAMES</td></tr></table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">10 lines · ⭐ wild · 10p stake equivalent · 3+ '+SYM.SC+' = 8 free games all ×2 · VAR CHECK can upgrade any result</p>');
 };
 async function state(){
-  try{const j=await (await fetch('/api/slot?action=state&user='+uk)).json();spinsLeft=j.spins||0;won=j.won_pence||0;meters();}catch(e){}
+  try{const j=await (await fetch('/api/slot?action=state&user='+uk)).json();spinsLeft=j.spins||0;won=j.balance_pence||0;meters();}catch(e){}
 }
 async function grant(url,btn){
   btn.disabled=true;
