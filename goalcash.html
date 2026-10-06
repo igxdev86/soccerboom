@@ -57,6 +57,7 @@ h1 em{font-style:normal;color:var(--grn)}
     <h1>GOAL<em>CASH</em></h1>
     <div class="sub" id="sub">Prototype — demo wallet, no real money. <span id="poolinfo"></span></div>
   </header>
+  <div class="bal" style="font-size:1rem;padding:4px 2px"><span>Balance <b id="balance">—</b></span><span id="balhint" style="font-size:.78rem;color:var(--dim)">sign in for £10 demo credit</span></div>
   <button class="buy" id="buy">BUY TICKET — £1</button>
   <div class="bal"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
   <div id="reveal"></div>
@@ -101,7 +102,7 @@ function renderAcct(){
   if(session){$('acctOut').innerHTML='Signed in as <b style="color:var(--txt)">'+esc(session.user.email)+'</b> — tickets follow your account on any device. <a href="#" id="sout" style="color:var(--grn)">Sign out</a>';
     $('acctForm').hidden=true;
     document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();};
-  }else{$('acctOut').textContent='Sign in to keep your tickets across devices.';$('acctForm').hidden=false;}
+  }else{$('acctOut').textContent='Sign in to play \u2014 new accounts get \u00a310 demo credit.';$('acctForm').hidden=false;$('balance').textContent='\u2014';$('balhint').textContent='sign in for \u00a310 demo credit';}
 }
 async function claimAnon(){
   try{await fetch('/api/gc?action=claim&anon='+uk,{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});load();loadFavs();}catch(e){}
@@ -134,12 +135,15 @@ async function poolInfo(){
   }catch(e){}
 }
 $('buy').onclick=async()=>{
+  if(!session){document.getElementById('acct').scrollIntoView({behavior:'smooth'});$('acctOut').textContent='Sign in to play \u2014 new accounts get \u00a310 demo credit.';return;}
   $('buy').disabled=true;$('buy').textContent='Drawing\u2026';
   try{
-    const r=await fetch('/api/gc?action=buy&user='+uk,{method:'POST',headers:hdrs()});
+    const r=await fetch('/api/gc?action=buy',{method:'POST',headers:hdrs()});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     const t=j.ticket;
+    if(j.balance_pence!=null)$('balance').textContent=fmt(j.balance_pence);
+    const when=new Date(t.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})+' '+new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">${t.cash_pence?'GREAT! YOU\u2019VE WON':'NO INSTANT WIN \u2014 BUT YOU\u2019RE IN THE GAME'}</div>
       <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'\u00a30 instant'}</div>
@@ -148,7 +152,7 @@ $('buy').onclick=async()=>{
       <div class="pg">${fmt(t.per_goal_pence)} PER GOAL</div>`:`<div class="player">${esc(t.fixture)}</div>
       <div class="pg" style="background:var(--hair);color:var(--txt)">PLAYER ALLOCATED WHEN THE TEAM SHEET DROPS</div>
       <div class="fx">Your random player comes from the confirmed XIs \u2014 usually \u22481 hour before kickoff. Check back.</div>`}
-      <div class="fx">${new Date(t.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})} ${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT kickoff</div>
+      <div class="fx">${when} kickoff</div>
     </div>`;
     load();
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
@@ -158,6 +162,7 @@ async function load(){
   try{
     const j=await (await fetch('/api/gc?action=tickets&user='+uk,{headers:hdrs()})).json();
     $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
+    if(j.balance_pence!=null){$('balance').textContent=fmt(j.balance_pence);$('balhint').textContent='demo credit';}
     if(!j.tickets.length)return;
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
       <div class="l1"><span>${t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
