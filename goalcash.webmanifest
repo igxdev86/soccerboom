@@ -1,6 +1,6 @@
 {
-  "name": "GOALCASH",
-  "short_name": "GOALCASH",
+  "name": "GOALRUSH",
+  "short_name": "GOALRUSH",
   "start_url": "/goalcash.html",
   "display": "standalone",
   "background_color": "#0B0E13",
