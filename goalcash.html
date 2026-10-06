@@ -78,7 +78,7 @@ input::placeholder{color:var(--dim)}
     <button class="pill" id="topAcct">Sign in</button>
   </div>
   <div class="sub" id="poolinfo">Prototype — demo credit, no real money.</div>
-  <button class="buy" id="buy">MATCH PACK — £1 · 10 FOOTBALLERS</button>
+  <button class="buy" id="buy">MATCH PACK — £1</button>
   <div class="card" id="bigcard" hidden style="margin-top:10px;border-color:var(--grn)">
     <div style="font-size:.72rem;letter-spacing:.14em;color:var(--grn);text-transform:uppercase;font-weight:700">Big Match</div>
     <div id="bigfx" style="font-weight:700;font-size:1.15rem;margin:5px 0 2px"></div>
@@ -222,8 +222,8 @@ async function buyTicket(kind,btn,label){
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
   btn.disabled=false;btn.textContent=label;
 }
-$('buy').onclick=()=>buyTicket('std',$('buy'),'MATCH PACK \u2014 \u00a31 \u00b7 10 FOOTBALLERS');
-document.addEventListener('click',e=>{if(e.target&&e.target.id==='buyBig')buyTicket('big',e.target,'BIG MATCH PACK \u2014 \u00a31 \u00b7 10 FOOTBALLERS');});
+$('buy').onclick=()=>buyTicket('std',$('buy'),'MATCH PACK \u2014 \u00a31');
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='buyBig')buyTicket('big',e.target,'BIG MATCH PACK \u2014 \u00a31');});
 
 async function load(){
   try{
