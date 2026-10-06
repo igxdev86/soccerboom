@@ -108,6 +108,7 @@ input::placeholder{color:var(--dim)}
 <div id="sheet">
   <h3>Account</h3>
   <div id="acctOut" class="note">Checking…</div>
+  <div id="ledger" style="max-height:180px;overflow-y:auto;margin-top:10px"></div>
   <div id="acctForm" hidden>
     <input id="email" type="email" placeholder="Email" autocomplete="email">
     <input id="code" type="text" inputmode="numeric" placeholder="6-digit code from your email" hidden>
@@ -116,7 +117,7 @@ input::placeholder{color:var(--dim)}
 </div>
 
 <nav class="gcnav">
-  <a href="/goalcash.html" class="on">Play</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a>
+  <a href="/goalcash.html" class="on">Play</a><a href="/winners.html">Winners</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a>
 </nav>
 
 <script>
@@ -150,8 +151,16 @@ async function initAuth(){
     sbc.auth.onAuthStateChange((_e,s)=>{session=s;renderAcct();if(s){claim();load();}});
   }catch(e){$('acctOut').textContent='Accounts unavailable right now.';}
 }
+async function loadLedger(){
+  if(!session){$('ledger').innerHTML='';return;}
+  try{
+    const j=await (await fetch('/api/gc?action=ledger',{headers:hdrs()})).json();
+    const names={welcome_pack:'Welcome pack',welcome_entry:'Welcome credit',welcome_credit:'Welcome credit',pack:'Match Pack',ticket:'Ticket',instant_win:'Instant wins',goal_bonus:'Player bonus',event_bonus:'Player bonus',match_spice:'Match Spice'};
+    $('ledger').innerHTML=(j.ledger||[]).map(l=>`<div style="display:flex;justify-content:space-between;font-size:.82rem;padding:5px 0;border-bottom:1px solid var(--hair)"><span class="note">${names[l.reason]||esc(l.reason)} \u00b7 ${new Date(l.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span><span style="color:${l.delta_pence<0?'var(--dim)':'var(--grn)'};font-weight:700">${l.delta_pence<0?'\u2212':'+'}${fmt(Math.abs(l.delta_pence))}</span></div>`).join('')||'<div class="note">No transactions yet.</div>';
+  }catch(e){}
+}
 function renderAcct(){
-  if(session){
+  if(session){loadLedger();
     $('topAcct').textContent='\u00a3\u2026';$('topAcct').className='pill ghost';
     $('acctOut').innerHTML='Signed in as <b>'+esc(session.user.email)+'</b>. Balance and tickets follow this account on any device.<br><br><a href="#" id="sout" style="color:var(--red)">Sign out</a>';
     $('acctForm').hidden=true;
