@@ -78,7 +78,7 @@ input::placeholder{color:var(--dim)}
     <button class="pill" id="topAcct">Sign in</button>
   </div>
   <div class="sub" id="poolinfo">Prototype — demo credit, no real money.</div>
-  <button class="buy" id="buy">SQUAD PACK — £1 · 10 PLAYERS</button>
+  <button class="buy" id="buy">MATCH PACK — £1 · 10 PLAYERS</button>
   <div class="card" id="bigcard" hidden style="margin-top:10px;border-color:var(--grn)">
     <div style="font-size:.72rem;letter-spacing:.14em;color:var(--grn);text-transform:uppercase;font-weight:700">Big Match</div>
     <div id="bigfx" style="font-weight:700;font-size:1.15rem;margin:5px 0 2px"></div>
@@ -99,7 +99,7 @@ input::placeholder{color:var(--dim)}
     <div id="favres"></div>
   </div>
 
-  <div class="small">Every £1 Squad Pack opens 10 entries across randomly allocated fixtures from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — a £1 Squad Pack holds 10 entries of 10p — the minimum online purchase is one pack. Every entry wins cash (1p floor — every pack pays at least 10p), and each entry's player multiplies that entry's win: goal ×10, yellow ×3, red ×20, cumulative. Jackpot instants of £2.50, £5 and £10 are pure cash, banked on the spot. Settled automatically from the official match timeline.<br><br>
+  <div class="small">Every £1 Match Pack opens 10 entries across randomly allocated fixtures from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — a £1 Match Pack puts 10 entries of 10p on ONE randomly allocated match — the minimum online purchase is one pack. Every entry wins cash (1p floor — every pack pays at least 10p), and each entry's player multiplies that entry's win: goal ×10, yellow ×3, red ×20, cumulative. Jackpot instants of £2.50, £5 and £10 are pure cash, banked on the spot. Every pack also carries a 5p Match Bonus stake multiplied by match-level drama — a hat-trick in your match ×20, hat-tricks from both teams ×1000, two reds ×15, four reds ×300, 7+ goals ×15, cumulative. Settled automatically from the official match timeline.<br><br>
   <b style="color:var(--txt)">Play for free by post</b> — identical draw, same prizes, no purchase needed.<br>
   <a href="/goalcash-howto.html">How to play</a> · <a href="/goalcash-rules.html">Terms &amp; free entry</a> · <a href="/goalcash-privacy.html">Privacy</a> · 18+ · GB residents · <a href="https://www.begambleaware.org">BeGambleAware.org</a></div>
 </div>
@@ -158,7 +158,7 @@ function renderAcct(){
     document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();sheet(false);};
   }else{
     $('topAcct').textContent='Sign in';$('topAcct').className='pill';
-    $('acctOut').textContent=cfgOk?'New accounts get a free \u00a31 Squad Pack.':'Checking\u2026';
+    $('acctOut').textContent=cfgOk?'New accounts get a free \u00a31 Match Pack.':'Checking\u2026';
     $('acctForm').hidden=!cfgOk;
   }
 }
@@ -205,14 +205,15 @@ async function buyTicket(kind,btn,label){
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">PACK OPENED \u2014 EVERY PACK WINS</div>
       <div class="cash">${fmt(j.pack_total_pence)}</div>
-      <div class="fx">10 players \u00b7 goal \u00d710 \u00b7 yellow \u00d73 \u00b7 red \u00d720 each entry\u2019s win</div>
+      <div class="fx">${esc((j.pack.find(t=>t.fixture)||{}).fixture||'')} \u00b7 goal \u00d710 \u00b7 yellow \u00d73 \u00b7 red \u00d720 each entry</div>
+      <div class="fx">MATCH SPICE on this pack: hat-trick \u00d720 \u00b7 both-team hat-tricks \u00d71000 \u00b7 2 reds \u00d715 \u00b7 4 reds \u00d7300 \u00b7 7+ goals \u00d715 (on a 5p bonus stake)</div>
       <div style="text-align:left;margin-top:12px">${rows}</div>
     </div>`;
     load();
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
   btn.disabled=false;btn.textContent=label;
 }
-$('buy').onclick=()=>buyTicket('std',$('buy'),'SQUAD PACK \u2014 \u00a31 \u00b7 10 PLAYERS');
+$('buy').onclick=()=>buyTicket('std',$('buy'),'MATCH PACK \u2014 \u00a31 \u00b7 10 PLAYERS');
 document.addEventListener('click',e=>{if(e.target&&e.target.id==='buyBig')buyTicket('big',e.target,'BIG MATCH PACK \u2014 \u00a31 \u00b7 10 PLAYERS');});
 
 async function load(){
@@ -225,10 +226,12 @@ async function load(){
     j.tickets.forEach(t=>{const k=t.pack_id||'single-'+t.id;if(!packs[k]){packs[k]=[];order.push(k);}packs[k].push(t);});
     $('tickets').innerHTML=order.map(k=>{
       const es=packs[k];
-      const totWon=es.reduce((s,t)=>s+(t.cash_pence||0)+(t.bonus_pence||0),0);
+      const sp=j.spice&&es[0].pack_id&&j.spice[es[0].pack_id];
+      const totWon=es.reduce((s,t)=>s+(t.cash_pence||0)+(t.bonus_pence||0),0)+(sp?sp.bonus_pence:0);
       const openN=es.filter(t=>!t.settled).length;
-      const head=`<div class="l1" style="padding-top:8px"><span><b>${es.length>1?'Squad Pack':'Ticket'}</b> <span style="color:var(--dim)">\u00b7 ${new Date(es[0].created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span></span><span class="bonus">${fmt(totWon)}${openN?' <span style="color:var(--dim);font-weight:400">\u00b7 '+openN+' open</span>':''}</span></div>`;
-      const lines=es.map(t=>`<div class="t" style="padding:7px 2px">
+      const head=`<div class="l1" style="padding-top:8px"><span><b>${es.length>1?'Match Pack':'Ticket'}</b> <span style="color:var(--dim)">\u00b7 ${new Date(es[0].created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span></span><span class="bonus">${fmt(totWon)}${openN?' <span style="color:var(--dim);font-weight:400">\u00b7 '+openN+' open</span>':''}</span></div>`;
+      const spLine=sp?`<div class="t" style="padding:7px 2px"><div class="l1" style="font-size:.86rem"><span class="bonus">MATCH SPICE \u00d7${sp.mult}</span><span class="bonus">+${fmt(sp.bonus_pence)}</span></div></div>`:'';
+      const lines=spLine+es.map(t=>`<div class="t" style="padding:7px 2px">
         <div class="l1" style="font-weight:400;font-size:.86rem"><span>${!t.fixture?'<span class="bonus">Jackpot '+fmt(t.cash_pence)+'</span>':t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
         <span style="font-size:.82rem">${t.settled?(t.bonus_pence?'<span class="bonus">'+[t.goals?t.goals+'g':'',t.cards?t.cards+'yc':'',t.reds?t.reds+'rc':''].filter(Boolean).join(' ')+' +'+fmt(t.bonus_pence)+'</span>':t.fixture?'<span style="color:var(--dim)">no events</span>':''):'<span style="color:var(--dim)">open</span>'}</span></div>
         ${t.fixture?`<div class="l2">${esc(t.fixture)} \u00b7 ${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT</div>`:''}
