@@ -78,13 +78,13 @@ input::placeholder{color:var(--dim)}
     <button class="pill" id="topAcct">Sign in</button>
   </div>
   <div class="sub" id="poolinfo">Prototype — demo credit, no real money.</div>
-  <button class="buy" id="buy">MATCH PACK — £1 · 10 PLAYERS</button>
+  <button class="buy" id="buy">MATCH PACK — £1 · 10 FOOTBALLERS</button>
   <div class="card" id="bigcard" hidden style="margin-top:10px;border-color:var(--grn)">
     <div style="font-size:.72rem;letter-spacing:.14em;color:var(--grn);text-transform:uppercase;font-weight:700">Big Match</div>
     <div id="bigfx" style="font-weight:700;font-size:1.15rem;margin:5px 0 2px"></div>
     <div id="bigko" class="note" style="font-size:.82rem"></div>
     <button class="buy" id="buyBig" style="margin:12px 0 0;font-size:1.05rem;padding:15px">BIG MATCH TICKET — £1</button>
-    <div class="note" style="font-size:.75rem;margin-top:8px">All 10 of your pack's players come from this one fixture's confirmed XIs. Same guaranteed cash, same multipliers. One featured match at a time, chosen by us.</div>
+    <div class="note" style="font-size:.75rem;margin-top:8px">All 10 of your pack's footballers come from this one fixture's confirmed XIs. Same guaranteed cash, same multipliers. One featured match at a time, chosen by us.</div>
   </div>
   <div class="statline"><span>Spent <b id="spent">£0</b></span><span>Won <b id="won">£0</b></span></div>
   <div id="reveal"></div>
@@ -99,7 +99,7 @@ input::placeholder{color:var(--dim)}
     <div id="favres"></div>
   </div>
 
-  <div class="small">Every £1 Match Pack opens 10 entries across randomly allocated fixtures from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — a £1 Match Pack puts 10 entries of 10p on ONE randomly allocated match — the minimum online purchase is one pack. Every entry wins cash (1p floor — every pack pays at least 10p), and each entry's player multiplies that entry's win: goal ×10, yellow ×3, red ×20, cumulative. Jackpot instants of £2.50, £5 and £10 are pure cash, banked on the spot. Every pack also carries a 5p Match Bonus stake multiplied by match-level drama — a hat-trick in your match ×20, hat-tricks from both teams ×1000, two reds ×15, four reds ×300, 7+ goals ×15, cumulative. Settled automatically from the official match timeline.<br><br>
+  <div class="small">Every £1 Match Pack opens 10 entries across randomly allocated fixtures from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — a £1 Match Pack puts 10 entries of 10p on ONE randomly allocated match — the minimum online purchase is one pack. Every entry wins cash (1p floor — every pack pays at least 10p), and each entry's footballer multiplies that entry's win: goal ×10, yellow ×3, red ×20, cumulative. Jackpot instants of £2.50, £5 and £10 are pure cash, banked on the spot. Every pack also carries a 5p Match Bonus stake multiplied by match-level drama — a hat-trick in your match ×20, hat-tricks from both teams ×1000, two reds ×15, four reds ×300, 7+ goals ×15, cumulative. Settled automatically from the official match timeline.<br><br>
   <b style="color:var(--txt)">Play for free by post</b> — identical draw, same prizes, no purchase needed.<br>
   <a href="/goalcash-howto.html">How to play</a> · <a href="/goalcash-rules.html">Terms &amp; free entry</a> · <a href="/goalcash-privacy.html">Privacy</a> · 18+ · GB residents · <a href="https://www.begambleaware.org">BeGambleAware.org</a></div>
 </div>
@@ -209,7 +209,7 @@ async function buyTicket(kind,btn,label){
     const rows=j.pack.map(t=>{
       if(!t.fixture)return `<div class="pe"><span class="bonus">JACKPOT ${fmt(t.cash_pence)}</span><span class="note">pure cash \u00b7 banked</span></div>`;
       if(t.player_name)return `<div class="pe"><span><b>${esc(t.player_name)}</b> <span class="note">(${esc(t.position)})</span></span><span class="note">${esc(t.fixture)} \u00b7 ${fmt(t.cash_pence)}</span></div>`;
-      return `<div class="pe"><span class="note">Player at team sheet</span><span class="note">${esc(t.fixture)} \u00b7 ${fmt(t.cash_pence)}</span></div>`;
+      return `<div class="pe"><span class="note">Footballer at team sheet</span><span class="note">${esc(t.fixture)} \u00b7 ${fmt(t.cash_pence)}</span></div>`;
     }).join('');
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">PACK OPENED \u2014 EVERY PACK WINS</div>
@@ -222,8 +222,8 @@ async function buyTicket(kind,btn,label){
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
   btn.disabled=false;btn.textContent=label;
 }
-$('buy').onclick=()=>buyTicket('std',$('buy'),'MATCH PACK \u2014 \u00a31 \u00b7 10 PLAYERS');
-document.addEventListener('click',e=>{if(e.target&&e.target.id==='buyBig')buyTicket('big',e.target,'BIG MATCH PACK \u2014 \u00a31 \u00b7 10 PLAYERS');});
+$('buy').onclick=()=>buyTicket('std',$('buy'),'MATCH PACK \u2014 \u00a31 \u00b7 10 FOOTBALLERS');
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='buyBig')buyTicket('big',e.target,'BIG MATCH PACK \u2014 \u00a31 \u00b7 10 FOOTBALLERS');});
 
 async function load(){
   try{
