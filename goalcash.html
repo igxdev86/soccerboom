@@ -46,7 +46,7 @@ h1 em{font-style:normal;color:var(--grn)}
   <div id="reveal"></div>
   <h2 style="margin-top:26px;font-size:1rem">Your tickets</h2>
   <div class="card" id="tickets"><div class="note">No tickets yet.</div></div>
-  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's confirmed starting XIs. Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.</div>
+  <div class="small">How it works: every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and allocates you a random player from tonight's fixtures \u2014 confirmed starting XIs once team sheets are in, full squads before that (if your player doesn't get on, they score 0 \u2014 that's the game). Every goal your player scores tonight pays the per-goal bonus automatically. Keepers pay £250 a goal for a reason. Tickets settle from the official match timeline after full time.</div>
 </div>
 <script>
 "use strict";
@@ -59,7 +59,7 @@ const fmt=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
 async function poolInfo(){
   try{const j=await (await fetch('/api/gc?action=pool')).json();
     $('poolinfo').textContent=j.players?j.players+' players across '+j.matches+' trackable matches tonight.':'No eligible matches right now.';
-    if(!j.players){$('buy').disabled=true;$('buy').textContent='TICKETS OPEN WITH TONIGHT\u2019S TEAM SHEETS';}
+    if(!j.players){$('buy').disabled=true;$('buy').textContent='NO TRACKABLE FIXTURES TODAY';}
   }catch(e){}
 }
 $('buy').onclick=async()=>{
