@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E13">
+<title>Winners — GOALRUSH</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B0E13;--panel:#12161E;--txt:#F2F4F8;--dim:#7C8594;--grn:#27B35B;--hair:#1E2430}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 96px}
+header{padding:22px 0 10px}
+h1{font-weight:700;font-size:1.7rem}h1 em{font-style:normal;color:var(--grn)}
+.sub{color:var(--dim);font-size:.85rem;margin-top:4px}
+h2{font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin:22px 0 8px;font-weight:500}
+.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:4px 16px}
+.w{display:flex;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid var(--hair);font-size:.92rem}
+.w:last-child{border-bottom:none}
+.w .amt{color:var(--grn);font-weight:700;white-space:nowrap}
+.w .d{color:var(--dim);font-size:.8rem;margin-top:2px}
+.note{color:var(--dim);padding:16px 0;font-size:.9rem}
+.gcnav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,18,25,.97);border-top:1px solid var(--hair);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+.gcnav a{flex:1;text-align:center;padding:13px 0 11px;color:var(--dim);text-decoration:none;font-size:.78rem;font-weight:500}
+.gcnav a.on{color:var(--grn)}
+.cta{display:block;text-align:center;background:var(--grn);color:#fff;text-decoration:none;font-weight:700;padding:15px;border-radius:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>GOAL<em>RUSH</em> winners</h1><div class="sub">Real settled wins from the last 7 days. Every pack wins something — these are the ones that went off.</div></header>
+  <h2>Player bonuses &amp; big instants</h2>
+  <div class="card" id="wins"><div class="note">Loading…</div></div>
+  <h2>Match Spice hits</h2>
+  <div class="card" id="spice"><div class="note">Loading…</div></div>
+  <a class="cta" href="/goalcash.html">Open a Match Pack — £1</a>
+</div>
+<nav class="gcnav">
+  <a href="/goalcash.html">Play</a><a href="/winners.html" class="on">Winners</a><a href="/goalcash-howto.html">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a>
+</nav>
+<script>
+"use strict";
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const fmt=p=>'\u00a3'+(p/100).toFixed(2).replace(/\.00$/,'');
+(async()=>{
+  try{
+    const j=await (await fetch('/api/gc?action=winners')).json();
+    const w=document.getElementById('wins');
+    const wins=(j.wins||[]).sort((a,b)=>(b.cash_pence+b.bonus_pence)-(a.cash_pence+a.bonus_pence)).slice(0,20);
+    w.innerHTML=wins.length?wins.map(t=>{
+      const ev=[t.goals?t.goals+' goal'+(t.goals>1?'s':''):'',t.cards?t.cards+' yellow'+(t.cards>1?'s':''):'',t.reds?'red card':''].filter(Boolean).join(', ');
+      return `<div class="w"><span>${t.player_name?'<b>'+esc(t.player_name)+'</b>'+(ev?' \u2014 '+ev:''):'Jackpot instant'}<div class="d">${esc(t.fixture||'Instant win')}</div></span><span class="amt">${fmt((t.cash_pence||0)+(t.bonus_pence||0))}</span></div>`;
+    }).join(''):'<div class="note">First winners land after tonight\u2019s games settle.</div>';
+    const s=document.getElementById('spice');
+    s.innerHTML=(j.spice&&j.spice.length)?j.spice.map(x=>`<div class="w"><span><b>MATCH SPICE \u00d7${x.mult}</b><div class="d">match went off</div></span><span class="amt">+${fmt(x.bonus_pence)}</span></div>`).join(''):'<div class="note">No spice hits yet \u2014 hat-tricks from both teams pay \u00d71000.</div>';
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
