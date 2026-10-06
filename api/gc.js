@@ -3,13 +3,16 @@
 const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY, KEY = process.env.THESTATSAPI_KEY;
 const sbH = { apikey: SK, Authorization: 'Bearer ' + SK, 'Content-Type': 'application/json' };
 
-const TICKET_PENCE = 100;
-// Guaranteed-win table: [pence, probability, multiplier-eligible]. Every ticket pays; 4p floor.
-// £25+ are pure-cash jackpot instants — no event multiplier (tail-liability cap).
-const CASH = [[10000, .0004, false], [5000, .001, false], [2500, .003, false],
-  [1000, .002, true], [200, .01, true], [100, .025, true], [50, .04, true], [25, .07, true], [10, .15, true]];
-const CASH_FLOOR = 5;
-const BIG_CAP = 500; // max Big Match tickets per featured fixture
+const PACK_PRICE = 100, PACK_SIZE = 10, ENTRY_PENCE = 10; // £1 Match Pack = 10 entries of 10p
+// Per-ENTRY guaranteed-win table: [pence, probability, multiplier-eligible]. Floor 1p — every pack pays ≥ 10p.
+// £2.50+ instants are pure-cash jackpots — no multiplier (tail cap).
+const CASH = [[1000, .0003, false], [500, .0006, false], [250, .0012, false],
+  [100, .001, true], [50, .003, true], [25, .008, true], [10, .02, true], [5, .05, true], [2, .12, true]];
+const CASH_FLOOR = 1;
+const BIG_CAP = 5000; // max Big Match ENTRIES per featured fixture (500 packs)
+// Match Spice: every pack carries a 5p Match Bonus stake, multiplied by match-level events (cumulative).
+const SPICE_BASE = 5;
+const SPICE = { hat_trick: 20, both_team_hat_tricks: 1000, reds_2plus: 15, reds_4plus: 300, goals_7plus: 15 };
 // Event multipliers applied to the instant win (cumulative): bonus = instant × Σ multipliers
 const MULT = { goal: 10, yellow: 3, red: 20 };
 const PER_GOAL = { G: 0, D: 0, M: 0, F: 0 }; // legacy column, unused in multiplier model
