@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060810">
+<title>GOALRUSH SLOT - concept</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#060810;--gold:#D9A441;--gold2:#F6D47C;--grn:#27B35B;--red:#E8402A;--txt:#F2F4F8;--dim:#7C8594}
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:radial-gradient(ellipse at 50% -10%,#14233f 0%,var(--bg) 60%);color:var(--txt);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 10px 40px}
+.cab{width:100%;max-width:430px;border-radius:22px;padding:3px;background:linear-gradient(160deg,var(--gold2),var(--gold) 30%,#8a6420 70%,var(--gold2));box-shadow:0 10px 50px rgba(0,0,0,.7)}
+.inner{background:linear-gradient(180deg,#101c31,#0a1322);border-radius:19px;padding:14px 12px 16px}
+.marq{text-align:center;font-weight:700;font-size:1.5rem;letter-spacing:.04em;color:var(--gold2);text-shadow:0 0 24px rgba(217,164,65,.35)}
+.marq em{font-style:normal;color:var(--grn)}
+.tag{text-align:center;color:var(--dim);font-size:.68rem;letter-spacing:.2em;margin:2px 0 10px}
+.reels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#050a14;border:2px solid #223457;border-radius:12px;padding:8px;box-shadow:inset 0 4px 18px rgba(0,0,0,.8)}
+.reel{display:grid;grid-template-rows:repeat(3,1fr);gap:6px}
+.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.7rem;background:linear-gradient(180deg,#16233c,#0d1830);border:1px solid #27395e;border-radius:9px}
+.cell.hit{animation:glow .7s infinite alternate;border-color:var(--gold2)}
+@keyframes glow{from{box-shadow:0 0 4px rgba(246,212,124,.5)}to{box-shadow:0 0 18px rgba(246,212,124,.95);transform:scale(1.06)}}
+.meters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 10px}
+.mt{background:#050a14;border:1px solid #223457;border-radius:10px;padding:7px 8px;text-align:center}
+.mt span{display:block;font-size:.58rem;letter-spacing:.14em;color:var(--dim)}
+.mt b{font-size:1.02rem;color:var(--gold2)}
+.ctrl{display:flex;gap:8px;align-items:stretch}
+button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer}
+.bet{flex:1;display:flex;align-items:center;justify-content:space-between;background:#050a14;border:1px solid #223457;border-radius:12px;padding:0 6px}
+.bet button{background:#1a2a47;color:var(--txt);width:36px;height:36px;border-radius:9px;font-size:1.1rem}
+.spin{flex:1.3;background:linear-gradient(180deg,#3ddb7c,var(--grn) 60%,#178540);color:#fff;font-size:1.15rem;padding:14px 0;box-shadow:0 4px 0 #0d5c2b}
+.spin:active{transform:translateY(2px);box-shadow:0 2px 0 #0d5c2b}
+.spin:disabled{filter:grayscale(.7);box-shadow:none}
+.sub{display:flex;gap:8px;margin-top:10px}
+.sub button{flex:1;background:#1a2a47;color:var(--dim);padding:10px 0;font-size:.8rem}
+.msg{text-align:center;min-height:22px;margin-top:10px;font-weight:700;color:var(--gold2)}
+.fs{display:none;text-align:center;background:linear-gradient(90deg,transparent,rgba(217,164,65,.18),transparent);border-top:1px solid var(--gold);border-bottom:1px solid var(--gold);padding:5px;margin:8px 0;color:var(--gold2);font-size:.8rem;letter-spacing:.12em}
+#ov{position:fixed;inset:0;background:rgba(3,5,10,.88);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+#ov .box{background:linear-gradient(180deg,#14233f,#0a1322);border:2px solid var(--gold);border-radius:18px;padding:26px 22px;text-align:center;max-width:380px;width:100%;max-height:80vh;overflow-y:auto}
+#ov h2{color:var(--gold2);font-size:1.5rem;letter-spacing:.06em}
+#ov .amt{font-size:2.6rem;font-weight:700;color:var(--gold2);margin:8px 0}
+#ov table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:10px}
+#ov td{padding:5px;border-bottom:1px solid #223457;text-align:left}
+#ov td:last-child{text-align:right;color:var(--gold2)}
+.note{color:var(--dim);font-size:.72rem;text-align:center;margin-top:14px;line-height:1.6;max-width:430px}
+.note a{color:var(--grn)}
+</style>
+</head>
+<body>
+<div class="cab"><div class="inner">
+  <div class="marq">GOAL<em>RUSH</em> SLOT</div>
+  <div class="tag">MISSION MULTIPLIER · 10 LINES · CONCEPT DEMO</div>
+  <div class="fs" id="fsbar">FREE SPINS · <b id="fsn">0</b> LEFT · ALL WINS ×2 · 🟥🟥 = +1 SPIN</div>
+  <div class="reels" id="reels"></div>
+  <div class="meters">
+    <div class="mt"><span>BALANCE</span><b id="bal">£50.00</b></div>
+    <div class="mt"><span>BET</span><b id="betv">£1.00</b></div>
+    <div class="mt"><span>WIN</span><b id="winv">£0.00</b></div>
+  </div>
+  <div class="ctrl">
+    <div class="bet"><button id="bdn">−</button><div style="font-size:.75rem;color:var(--dim)">BET</div><button id="bup">+</button></div>
+    <button class="spin" id="spin">SPIN</button>
+  </div>
+  <div class="sub"><button id="pt">PAYTABLE</button><button id="reset">RESET £50</button></div>
+  <div class="msg" id="msg">Demo credits · no real money</div>
+</div></div>
+<div class="note">Concept: GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. Sim RTP ~94.6%. 18+ demo.<br><a href="/">← GOALRUSH home</a> · <a href="/goalcash.html">Play Match Packs</a></div>
+<div id="ov"><div class="box" id="ovbox"></div></div>
+<script>
+"use strict";
+// GOALRUSH SLOT core — 5x3, 10 lines, left-to-right
+const SYM = { W:'\u2b50', SC:'\ud83c\udfc6', GOAL:'\u26bd', RED:'\ud83d\udfe5', BOOT:'\ud83d\udc5f', GLOVE:'\ud83e\uddf4', YEL:'\ud83d\udfe8', SHIRT:'\ud83d\udc55', WHIS:'\ud83d\udce3' };
+// Reel strips (weights by repetition). Tuned by simulation.
+const STRIPS = [
+ 'GOAL RED BOOT YEL SHIRT WHIS BOOT GLOVE YEL SHIRT WHIS W GOAL BOOT YEL SHIRT WHIS GLOVE SC BOOT YEL SHIRT WHIS GLOVE RED YEL SHIRT WHIS BOOT GLOVE SHIRT WHIS'.split(' '),
+ 'RED GOAL BOOT YEL SHIRT WHIS GLOVE BOOT YEL SHIRT WHIS W GOAL YEL SHIRT WHIS GLOVE SC BOOT YEL SHIRT WHIS GLOVE RED SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS GOAL'.split(' '),
+ 'GOAL BOOT YEL SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W YEL SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE RED SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS SC'.split(' '),
+ 'BOOT GOAL YEL SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W YEL SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS RED GOAL'.split(' '),
+ 'YEL GOAL BOOT SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS RED SC GOAL'.split(' ')];
+const LINES = [[1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,1,2,1],[1,2,1,0,1],[0,1,1,1,2]];
+// pays in line-bet multiples for 3/4/5
+const PAYS = { GOAL:[50,150,1000], RED:[35,100,400], BOOT:[20,50,150], GLOVE:[15,40,120], YEL:[10,25,80], SHIRT:[5,15,50], WHIS:[5,12,40], W:[60,250,2000] };
+const SCATTER_PAY = [3,15,100]; // total-bet multiples for 3/4/5 SC
+
+function spinGrid(rng){
+  const g=[];
+  for(let r=0;r<5;r++){const s=STRIPS[r],i=Math.floor(rng()*s.length);g.push([s[i],s[(i+1)%s.length],s[(i+2)%s.length]]);}
+  return g; // g[reel][row]
+}
+function evaluate(grid, totalBet, rng){
+  const lineBet = totalBet/10;
+  let win=0; const hits=[];
+  for(let li=0;li<10;li++){
+    const line=LINES[li];
+    const syms=line.map((row,reel)=>grid[reel][row]);
+    let first=syms[0]==='W'?null:syms[0], n=0;
+    for(const s of syms){
+      if(s==='SC')break;
+      if(s==='W'){n++;continue;}
+      if(first===null)first=s;
+      if(s===first)n++;else break;
+    }
+    if(first===null)first='W';
+    if(first==='SC')continue;
+    if(n>=3&&PAYS[first]){const p=PAYS[first][n-3]*lineBet;win+=p;hits.push({line:li,n,sym:first,pay:p});}
+  }
+  const scN=grid.flat().filter(s=>s==='SC').length;
+  let scPay=0, frees=0;
+  if(scN>=3){scPay=SCATTER_PAY[Math.min(scN,5)-3]*totalBet;win+=scPay;frees=8;}
+  // VAR CHECK: ~1/90 spins, multiplies a winning spin x2-x20 (weighted), or awards 1x bet on a dead spin
+  let varMult=0;
+  if(rng()<1/90){
+    if(win>0){const r=rng();varMult=r<.6?2:r<.85?3:r<.96?5:r<.995?10:20;win*=varMult;}
+    else{varMult=1;win+=totalBet;}
+  }
+  return {win, hits, scatters:scN, scatterPay:scPay, frees, varMult};
+}
+
+
+const el=id=>document.getElementById(id);
+const fmt=p=>'£'+(p/100).toFixed(2);
+const BETS=[10,20,50,100,200];
+let bal=+(localStorage.getItem('slot_bal')||5000),betI=3,spinning=false,frees=0;
+function save(){localStorage.setItem('slot_bal',bal);}
+function draw(g,hitCells){
+  el('reels').innerHTML=g.map((col,r)=>'<div class="reel">'+col.map((s,row)=>'<div class="cell'+(hitCells&&hitCells.has(r+'-'+row)?' hit':'')+'">'+SYM[s]+'</div>').join('')+'</div>').join('');
+}
+function rndGrid(){const g=[];for(let r=0;r<5;r++){g.push([0,0,0].map(()=>{const k=Object.keys(SYM);return k[Math.floor(Math.random()*k.length)];}));}return g;}
+function meters(){el('bal').textContent=fmt(bal);el('betv').textContent=fmt(BETS[betI]);}
+el('bup').onclick=()=>{if(!spinning){betI=Math.min(BETS.length-1,betI+1);meters();}};
+el('bdn').onclick=()=>{if(!spinning){betI=Math.max(0,betI-1);meters();}};
+el('reset').onclick=()=>{bal=5000;save();meters();el('msg').textContent='Demo balance reset.';};
+function overlay(html,ms){el('ovbox').innerHTML=html;el('ov').style.display='flex';if(ms)setTimeout(()=>el('ov').style.display='none',ms);}
+el('ov').onclick=()=>el('ov').style.display='none';
+el('pt').onclick=()=>{
+  const row=(s,p)=>'<tr><td>'+SYM[s]+' ×3/×4/×5</td><td>'+p.join(' / ')+'× line bet</td></tr>';
+  overlay('<h2>PAYTABLE</h2><table>'+['W','GOAL','RED','BOOT','GLOVE','YEL','SHIRT','WHIS'].map(s=>row(s,PAYS[s])).join('')+'<tr><td>'+SYM.SC+' 3/4/5 scatter</td><td>3 / 15 / 100× bet + FREE SPINS</td></tr></table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">10 fixed lines · ⭐ wild · FREE SPINS: 8 spins all ×2, 🟥🟥 in view +1 spin, retrigger +4 · VAR CHECK ~1 in 90: win ×2-×20 or dead spin pays 1×</p>');
+};
+async function doSpin(free){
+  const bet=BETS[betI];
+  if(!free){if(bal<bet){el('msg').textContent='Balance too low - reset to keep testing.';return;}bal-=bet;save();}
+  spinning=true;el('spin').disabled=true;el('winv').textContent=fmt(0);el('msg').textContent=free?'FREE SPIN':'';
+  meters();
+  const final=spinGrid(Math.random);
+  for(let t=0;t<12;t++){draw(rndGrid());await new Promise(r=>setTimeout(r,45));}
+  for(let settle=1;settle<=5;settle++){
+    const g=final.map((c,i)=>i<settle?c:rndGrid()[i]);
+    draw(g);await new Promise(r=>setTimeout(r,110));
+  }
+  const res=evaluate(final,bet,Math.random);
+  let win=res.win*(free?2:1);
+  const hitCells=new Set();
+  res.hits.forEach(h=>{for(let r=0;r<h.n;r++)hitCells.add(r+'-'+LINES[h.line][r]);});
+  final.forEach((c,r)=>c.forEach((s,row)=>{if(s==='SC'&&res.scatters>=3)hitCells.add(r+'-'+row);}));
+  draw(final,hitCells);
+  if(res.varMult){
+    await new Promise(r=>setTimeout(r,300));
+    overlay('<h2>VAR CHECK</h2><div class="amt">'+(res.win>0?'×'+res.varMult:'+'+fmt(bet))+'</div><p style="color:var(--dim)">'+(res.win>0?'Decision: win upgraded.':'Decision: goal given - dead spin pays.')+'</p>',1600);
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  if(win>0){
+    bal+=win;save();
+    const steps=18;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(win*i/steps));await new Promise(r=>setTimeout(r,26));}
+    if(win>=bet*20)overlay('<h2>'+(win>=bet*50?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(win)+'</div>',1800);
+    el('msg').textContent=res.hits.length?res.hits.length+' line'+(res.hits.length>1?'s':'')+(free?' ×2':''):'SCATTER PAY';
+  }else if(!res.varMult)el('msg').textContent=free?'':'No win - spin again';
+  meters();
+  if(res.frees){
+    frees+=(frees?4:res.frees);
+    overlay('<h2>MISSION FREE SPINS</h2><div class="amt">'+frees+'</div><p style="color:var(--dim)">All wins ×2 · 🟥🟥 in view = +1 spin</p>',1700);
+    await new Promise(r=>setTimeout(r,1600));
+  }
+  if(frees>0&&free){
+    const reds=final.flat().filter(s=>s==='RED').length;
+    if(reds>=2){frees=Math.min(frees+1,30);el('msg').textContent='🟥🟥 +1 FREE SPIN';}
+  }
+  spinning=false;el('spin').disabled=false;
+  if(frees>0){
+    frees--;el('fsbar').style.display='block';el('fsn').textContent=frees+1;
+    setTimeout(()=>doSpin(true),700);
+  }else{el('fsbar').style.display='none';}
+}
+el('spin').onclick=()=>{if(!spinning&&frees===0)doSpin(false);};
+draw(spinGrid(Math.random));meters();
+</script>
+</body>
+</html>
