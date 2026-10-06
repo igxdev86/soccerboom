@@ -80,16 +80,21 @@ async function upcomingFixtures() {
 const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr, b] of CASH) { acc += pr; if (r < acc) return { pence: p, bonus: b }; } return { pence: CASH_FLOOR, bonus: true }; };
 const pickFrom = a => a[Math.floor(Math.random() * a.length)];
 
+const cpCache = {};
 // Confirmed-XI pool for a match, or null if sheet not confirmed yet (played matches count as confirmed).
 async function confirmedPool(matchId) {
+  const hit = cpCache[matchId];
+  if (hit && Date.now() - hit.at < 10 * 6e4) return hit.pool;
   try {
     const lu = (await tsa(`/football/matches/${matchId}/lineups`)).data;
     if (!lu || !lu.confirmed) return null;
     const out = [];
     ['home', 'away'].forEach(s => (lu[s].starting_xi || []).forEach(p =>
       out.push({ player_name: p.name, position: p.position || 'M', team_name: lu[s].name })));
-    return out.length ? out : null;
-  } catch (e) { return null; }
+    const pool = out.length ? out : null;
+    cpCache[matchId] = { at: Date.now(), pool };
+    return pool;
+  } catch (e) { cpCache[matchId] = { at: Date.now(), pool: null }; return null; }
 }
 async function getFeatured() {
   try {
@@ -126,39 +131,41 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'buy') {
-      if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
+      if (!authed) return res.status(401).json({ error: 'Sign in to play \u2014 your balance lives on your account.' });
       const big = req.query.kind === 'big';
       let feat = null;
       if (big) {
         feat = await getFeatured() || await autoPickBig();
-        if (!feat) return res.status(409).json({ error: 'No Big Match ticket on sale right now.' });
+        if (!feat) return res.status(409).json({ error: 'No Big Match pack on sale right now.' });
         const cnt = await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${feat.match_id}&select=id`, { headers: { ...sbH, Prefer: 'count=exact', Range: '0-0' } });
         const total = parseInt((cnt.headers.get('content-range') || '/0').split('/')[1] || '0', 10);
-        if (total >= BIG_CAP) return res.status(409).json({ error: 'Big Match sold out for this fixture \u2014 standard tickets still on sale.' });
+        if (total >= BIG_CAP) return res.status(409).json({ error: 'Big Match sold out for this fixture \u2014 standard packs still on sale.' });
       }
       const f = await upcomingFixtures();
       if (!big && !f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
-      const draw = drawCash();
-      let t;
-      if (!draw.bonus) {
-        // Jackpot instant: pure cash, no fixture, no player, settled at purchase.
-        t = { match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
-      } else {
+      const entries = []; let probes = 0;
+      for (let i = 0; i < PACK_SIZE; i++) {
+        const draw = drawCash();
+        if (!draw.bonus) { entries.push({ cash_pence: draw.pence, match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 }); continue; }
         const fx = big ? { id: feat.match_id, home: feat.fixture.split(' v ')[0], away: feat.fixture.split(' v ')[1] || '', kickoff: feat.kickoff } : pickFrom(f);
-        t = { match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
-          player_name: null, position: null, team_name: null, per_goal_pence: 0 };
-        const xi = await confirmedPool(fx.id);
-        if (xi) { const p = pickFrom(xi); t = { ...t, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
+        let e = { cash_pence: draw.pence, match_id: fx.id, fixture: (fx.home || '') + ' v ' + (fx.away || ''), kickoff: fx.kickoff, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
+        if (big ? true : probes < 3) {
+          const xi = await confirmedPool(fx.id); if (!cpCache[fx.id] || probes < 3) probes++;
+          if (xi) { const p = pickFrom(xi); e = { ...e, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
+        }
+        entries.push(e);
       }
-      const r = await fetch(SB + '/rest/v1/rpc/gc_buy', { method: 'POST', headers: sbH,
-        body: JSON.stringify({ p_user: authed, p_price: TICKET_PENCE, p_cash: draw.pence, p_ticket: t }) });
-      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' — run the wallet SQL' });
+      const totalCash = entries.reduce((s, e) => s + e.cash_pence, 0);
+      const r = await fetch(SB + '/rest/v1/rpc/gc_buy_pack', { method: 'POST', headers: sbH,
+        body: JSON.stringify({ p_user: authed, p_price: PACK_PRICE, p_cash: totalCash, p_entries: entries }) });
+      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' \u2014 run the Squad Pack SQL' });
       const out = await r.json();
-      if (out.error === 'insufficient') return res.status(402).json({ error: 'Balance too low — demo top-ups coming with payments.' });
-      if (!draw.bonus) await fetch(SB + `/rest/v1/gc_tickets?id=eq.${out.ticket_id}`, { method: 'PATCH', headers: sbH,
+      if (out.error === 'insufficient') return res.status(402).json({ error: 'Balance too low \u2014 top-ups coming with payments.' });
+      const rows = await (await fetch(SB + `/rest/v1/gc_tickets?pack_id=eq.${out.pack_id}&select=*&order=cash_pence.desc`, { headers: sbH })).json();
+      // settle jackpot (cash-only) entries at purchase
+      await fetch(SB + `/rest/v1/gc_tickets?pack_id=eq.${out.pack_id}&match_id=is.null`, { method: 'PATCH', headers: sbH,
         body: JSON.stringify({ settled: true, bonus_pence: 0 }) }).catch(() => {});
-      const trow = await (await fetch(SB + `/rest/v1/gc_tickets?id=eq.${out.ticket_id}&select=*`, { headers: sbH })).json();
-      return res.status(200).json({ ticket: trow[0], balance_pence: out.balance });
+      return res.status(200).json({ pack: rows, pack_total_pence: totalCash, balance_pence: out.balance });
     }
 
     if (action === 'tickets') {
@@ -219,7 +226,7 @@ module.exports = async (req, res) => {
         balance = w[0] ? w[0].balance_pence : null;
       }
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ tickets: all, spent_pence: all.length * TICKET_PENCE, won_pence: won, balance_pence: balance });
+      return res.status(200).json({ tickets: all, spent_pence: all.length * ENTRY_PENCE, won_pence: won, balance_pence: balance });
     }
 
     if (action === 'fav_add' || action === 'fav_del') {
@@ -285,7 +292,7 @@ module.exports = async (req, res) => {
     if (action === 'admin') {
       if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
       const all = await (await fetch(SB + '/rest/v1/gc_tickets?select=user_key,cash_pence,bonus_pence,goals,settled,position,created_at,player_name,fixture&order=created_at.desc&limit=10000', { headers: sbH })).json();
-      const n = all.length, spent = n * TICKET_PENCE;
+      const n = all.length, spent = n * ENTRY_PENCE;
       const cash = all.reduce((s, t) => s + (t.cash_pence || 0), 0);
       const bonus = all.reduce((s, t) => s + (t.bonus_pence || 0), 0);
       const byPos = {};
