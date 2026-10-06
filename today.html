@@ -77,7 +77,7 @@ $('q').oninput=render;
 function render(){
   const q=$('q').value.trim().toLowerCase();
   const rows=data.filter(m=>!q||(m.home+' '+m.away+' '+m.competition).toLowerCase().includes(q));
-  $('count').textContent=rows.length+' matches with team sheets \u00b7 '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  $('count').textContent=rows.length+' matches with team sheets \u00b7 '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'GMT'})+' \u00b7 all times GMT';
   if(!rows.length){$('list').innerHTML='<div class="note">No fixtures with lineups right now. Team sheets land ~1h before kickoff; predicted XIs a few hours out. Check back closer to the evening games.</div>';return;}
   const groups={};
   rows.forEach(m=>(groups[m.competition]=groups[m.competition]||[]).push(m));
@@ -85,7 +85,7 @@ function render(){
     const ms=groups[k];
     return `<div class="comp"><h2>${esc(k)}</h2><div class="card">${ms.map(m=>{
       const live=m.status==='live',fin=m.status==='finished';
-      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
       const right=m.score
         ?`<div class="right"><div class="score">${m.score}</div><div class="st${live?' live':''}">${live?(m.minute?m.minute+"'":'LIVE'):'FT'}</div></div>`
         :`<div class="right"><div class="ko">${ko}</div><div class="st${m.lineup.confirmed?'':' predlab'}">${m.lineup.confirmed?'XI CONFIRMED':'PREDICTED XI'}</div></div>`;
