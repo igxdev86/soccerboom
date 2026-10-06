@@ -69,9 +69,9 @@ module.exports = async (req, res) => {
   if (!user) return res.status(400).json({ error: 'user required' });
   try {
     if (action === 'state') {
-      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
+      const r = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=spins,won_pence`, { headers: sbH })).json();
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ spins: await spins(user), balance_pence: w[0] ? w[0].balance_pence : 0 });
+      return res.status(200).json({ spins: r[0] ? r[0].spins : 0, won_pence: r[0] ? (r[0].won_pence || 0) : 0 });
     }
     if (action === 'daily') {
       const code = 'DAILY-' + new Date().toISOString().slice(0, 10);
@@ -116,10 +116,14 @@ module.exports = async (req, res) => {
         }
       }
       const total = all.reduce((s, x) => s + x.win, 0);
-      if (total > 0) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
-        body: JSON.stringify({ p_user: user, p_amount: total, p_reason: 'slot_prize', p_ticket: null }) }).catch(() => {});
-      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
-      return res.status(200).json({ spins: await spins(user), sequence: all, total_win: total, balance_pence: w[0] ? w[0].balance_pence : total });
+      let wonTotal = 0;
+      if (total > 0) {
+        const r = await fetch(SB + '/rest/v1/rpc/gc_slot_win', { method: 'POST', headers: sbH,
+          body: JSON.stringify({ p_user: user, p_amount: total }) });
+        if (r.ok) wonTotal = await r.json();
+      }
+      if (!wonTotal) { const r2 = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=won_pence`, { headers: sbH })).json(); wonTotal = r2[0] ? (r2[0].won_pence || 0) : 0; }
+      return res.status(200).json({ spins: await spins(user), sequence: all, total_win: total, won_pence: wonTotal });
     }
     if (action === 'mkcode') {
       if (!process.env.SYNC_SECRET || req.query.secret !== process.env.SYNC_SECRET) return res.status(401).json({ error: 'unauthorized' });
