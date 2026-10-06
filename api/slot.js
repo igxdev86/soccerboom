@@ -98,15 +98,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ granted: c.spins, spins: await spins(user) });
     }
     if (action === 'series') {
-      const s = await (await fetch(SB + "/rest/v1/gc_slot_series?active=eq.true&select=*&limit=1", { headers: sbH })).json();
+      const game = parseInt(req.query.game || '3', 10);
+      const s = await (await fetch(SB + `/rest/v1/gc_slot_series?id=eq.${game}&active=eq.true&select=*&limit=1`, { headers: sbH })).json();
       if (!s[0]) return res.status(404).json({ error: 'No active series.' });
       res.setHeader('Cache-Control', 's-maxage=60');
       return res.status(200).json({ series: { id: s[0].id, name: s[0].name, price_pence: s[0].price_pence, total: s[0].total, sold: s[0].sold, prizes_left: s[0].prizes_left } });
     }
     if (action === 'spin') {
       // Predetermined instant-win draw: outcome allocated server-side from the finite pool; reels only display it.
+      const game = parseInt(req.query.game || '3', 10);
       const r = await fetch(SB + '/rest/v1/rpc/gc_slot_draw', { method: 'POST', headers: sbH,
-        body: JSON.stringify({ p_user: user, p_price: TICKET_PRICE }) });
+        body: JSON.stringify({ p_user: user, p_series: game }) });
       if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 140) + ' \u2014 run the series SQL' });
       const out = await r.json();
       if (out.error) return res.status(402).json({ error: out.error === 'insufficient' ? 'No free tickets and balance too low.' : out.error === 'soldout' ? 'This series is sold out \u2014 next series soon.' : out.error });
