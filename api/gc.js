@@ -143,16 +143,15 @@ module.exports = async (req, res) => {
       }
       const f = await upcomingFixtures();
       if (!big && !f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
-      const entries = []; let probes = 0;
+      // Match Pack: ONE fixture per pack; all bonus-eligible entries ride it.
+      const fx = big ? { id: feat.match_id, home: feat.fixture.split(' v ')[0], away: feat.fixture.split(' v ')[1] || '', kickoff: feat.kickoff } : pickFrom(f);
+      const xi = await confirmedPool(fx.id);
+      const entries = [];
       for (let i = 0; i < PACK_SIZE; i++) {
         const draw = drawCash();
         if (!draw.bonus) { entries.push({ cash_pence: draw.pence, match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 }); continue; }
-        const fx = big ? { id: feat.match_id, home: feat.fixture.split(' v ')[0], away: feat.fixture.split(' v ')[1] || '', kickoff: feat.kickoff } : pickFrom(f);
         let e = { cash_pence: draw.pence, match_id: fx.id, fixture: (fx.home || '') + ' v ' + (fx.away || ''), kickoff: fx.kickoff, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
-        if (big ? true : probes < 3) {
-          const xi = await confirmedPool(fx.id); if (!cpCache[fx.id] || probes < 3) probes++;
-          if (xi) { const p = pickFrom(xi); e = { ...e, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
-        }
+        if (xi) { const p = pickFrom(xi); e = { ...e, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
         entries.push(e);
       }
       const totalCash = entries.reduce((s, e) => s + e.cash_pence, 0);
@@ -190,8 +189,10 @@ module.exports = async (req, res) => {
           // 2) Settle finished matches for assigned tickets.
           if (m.status === 'finished') {
             let ev = {};
+            const perPlayerTeamFill = {};
             const tally = (list) => (list || []).forEach(e => {
               if (!e.player) return;
+              if (e.team && e.team.name) perPlayerTeamFill[e.player.name] = e.team.name;
               const p = ev[e.player.name] = ev[e.player.name] || { g: 0, y: 0, r: 0 };
               if (e.type === 'goal') p.g++;
               else if (e.type === 'yellow_card') p.y++;
@@ -203,8 +204,28 @@ module.exports = async (req, res) => {
             } catch (e1) {
               try { const tl = await tsa(`/football/matches/${mid}/timeline`); tally(tl.data && tl.data.events); } catch (e2) {}
             }
+            // Match Spice: match-level events multiply the pack's 5p bonus stake (once per pack).
+            const teamsWithHT = new Set(); let redsTotal = 0, goalsTotal = 0, anyHT = false;
+            const perPlayerTeam = perPlayerTeamFill;
+            Object.entries(ev).forEach(([name, e]) => { goalsTotal += e.g; redsTotal += e.r; if (e.g >= 3) { anyHT = true; teamsWithHT.add(perPlayerTeam[name] || name); } });
+            let smult = 0;
+            if (anyHT) smult += SPICE.hat_trick;
+            if (teamsWithHT.size >= 2) smult += SPICE.both_team_hat_tricks;
+            if (redsTotal >= 2) smult += SPICE.reds_2plus;
+            if (redsTotal >= 4) smult += SPICE.reds_4plus;
+            if (goalsTotal >= 7) smult += SPICE.goals_7plus;
             // need cash_pence for multiplier — fetch fresh
-            const tk2 = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,cash_pence`, { headers: sbH })).json();
+            const tk2 = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,cash_pence,pack_id`, { headers: sbH })).json();
+            if (smult > 0) {
+              const packs = {};
+              tk2.forEach(t => { if (t.pack_id) packs[t.pack_id] = t.user_key; });
+              for (const [pid, ukey] of Object.entries(packs)) {
+                const ins = await fetch(SB + '/rest/v1/gc_pack_bonus', { method: 'POST', headers: { ...sbH, Prefer: 'return=minimal' },
+                  body: JSON.stringify([{ pack_id: pid, match_id: mid, mult: smult, bonus_pence: SPICE_BASE * smult }]) });
+                if (ins.ok) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
+                  body: JSON.stringify({ p_user: ukey, p_amount: SPICE_BASE * smult, p_reason: 'match_spice', p_ticket: pid }) }).catch(() => {});
+              }
+            }
             for (const t of tk2) {
               if (!t.player_name) continue; // no sheet ever confirmed — leave open for manual review
               const e = ev[t.player_name] || { g: 0, y: 0, r: 0 };
@@ -218,15 +239,19 @@ module.exports = async (req, res) => {
           }
         } catch (e) {}
       }
-      const all = await (await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(user)}&select=*&order=created_at.desc&limit=50`, { headers: sbH })).json();
-      const won = all.reduce((s, t) => s + (t.cash_pence || 0) + (t.bonus_pence || 0), 0);
+      const all = await (await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(user)}&select=*&order=created_at.desc&limit=100`, { headers: sbH })).json();
+      const pids = [...new Set(all.map(t => t.pack_id).filter(Boolean))];
+      let spice = [];
+      if (pids.length) spice = await (await fetch(SB + `/rest/v1/gc_pack_bonus?pack_id=in.(${pids.join(',')})&select=pack_id,mult,bonus_pence`, { headers: sbH })).json().catch(() => []);
+      const spiceByPack = {}; (spice || []).forEach(s => spiceByPack[s.pack_id] = s);
+      const won = all.reduce((s, t) => s + (t.cash_pence || 0) + (t.bonus_pence || 0), 0) + (spice || []).reduce((s, x) => s + (x.bonus_pence || 0), 0);
       let balance = null;
       if (authed) {
         const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(authed)}&select=balance_pence`, { headers: sbH })).json();
         balance = w[0] ? w[0].balance_pence : null;
       }
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ tickets: all, spent_pence: all.length * ENTRY_PENCE, won_pence: won, balance_pence: balance });
+      return res.status(200).json({ tickets: all, spice: spiceByPack, spent_pence: all.length * ENTRY_PENCE, won_pence: won, balance_pence: balance });
     }
 
     if (action === 'fav_add' || action === 'fav_del') {
@@ -297,13 +322,16 @@ module.exports = async (req, res) => {
       const bonus = all.reduce((s, t) => s + (t.bonus_pence || 0), 0);
       const byPos = {};
       all.forEach(t => { const k = t.position || 'pending'; const p = byPos[k] = byPos[k] || { n: 0, goals: 0, bonus: 0 }; p.n++; p.goals += t.goals || 0; p.bonus += t.bonus_pence || 0; });
+      const spiceAll = await (await fetch(SB + '/rest/v1/gc_pack_bonus?select=bonus_pence&limit=10000', { headers: sbH })).json().catch(() => []);
+      const spicePaid = (spiceAll || []).reduce((s, x) => s + (x.bonus_pence || 0), 0);
       const wallets = await (await fetch(SB + '/rest/v1/gc_wallet?select=balance_pence&limit=10000', { headers: sbH })).json().catch(() => []);
       const liability = (wallets || []).reduce((s, w) => s + (w.balance_pence || 0), 0);
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ tickets: n, users: new Set(all.map(t => t.user_key)).size,
         wallet_liability_pence: liability,
         revenue_pence: spent, instant_paid_pence: cash, bonus_paid_pence: bonus,
-        rtp_pct: n ? +(((cash + bonus) / spent) * 100).toFixed(1) : null,
+        spice_paid_pence: spicePaid,
+        rtp_pct: n ? +(((cash + bonus + spicePaid) / spent) * 100).toFixed(1) : null,
         unsettled: all.filter(t => !t.settled).length,
         awaiting_assignment: all.filter(t => !t.player_name && !t.settled).length,
         by_position: byPos, recent: all.slice(0, 25) });
