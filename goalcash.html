@@ -157,7 +157,7 @@ function renderAcct(){
     document.getElementById('sout').onclick=async e=>{e.preventDefault();await sbc.auth.signOut();session=null;renderAcct();load();sheet(false);};
   }else{
     $('topAcct').textContent='Sign in';$('topAcct').className='pill';
-    $('acctOut').textContent=cfgOk?'New accounts get \u00a310 demo credit.':'Checking\u2026';
+    $('acctOut').textContent=cfgOk?'New accounts get a free \u00a31 entry.':'Checking\u2026';
     $('acctForm').hidden=!cfgOk;
   }
 }
