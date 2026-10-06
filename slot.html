@@ -48,8 +48,8 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
 <body>
 <div class="cab"><div class="inner">
   <div class="marq">GOAL<em>RUSH</em> SLOT</div>
-  <div class="tag">MISSION MULTIPLIER · 10 LINES · CONCEPT DEMO</div>
-  <div class="fs" id="fsbar" style="display:block">SERIES 1 · <b id="poolleft">—</b> TICKETS LEFT · TOP PRIZE £500</div>
+  <div class="tag" style="color:var(--gold2);font-size:.85rem;letter-spacing:.14em;font-weight:700">WIN UP TO £10,000</div>
+  <div class="fs" id="fsbar" style="display:block"><b id="poolleft">—</b> TICKETS LEFT · TOP PRIZE <b id="pooltop">£10,000</b></div>
   <div class="reels" id="reels"></div>
   <div class="meters">
     <div class="mt"><span>BALANCE</span><b id="bal">£0.00</b></div>
@@ -180,26 +180,38 @@ el('spin').onclick=async()=>{
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     spinsLeft=j.spins;won=j.balance_pence;
-    const g=prizeGrid(j.prize_pence);
+    // Presentation only: the prize is fixed at the draw; reels may show it as base x multiplier theatre.
+    const p=j.prize_pence;
+    let mult=1,base=p;
+    if(p>=100){const opts=[25,10,5,2].filter(m2=>p%m2===0&&p/m2>=5);if(opts.length&&Math.random()<.6){mult=opts[Math.floor(Math.random()*opts.length)];base=p/mult;}}
+    const g=prizeGrid(base);
     const hs=new Set();for(let i=0;i<5;i++)hs.add(i+'-1');
     await animateTo(g,hs);
-    const steps=14;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(j.prize_pence*i/steps));await new Promise(r2=>setTimeout(r2,26));}
-    if(j.prize_pence>=2500)overlay('<h2>'+(j.prize_pence>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(j.prize_pence)+'</div>',1900);
-    el('msg').textContent='WON '+fmt(j.prize_pence)+(j.paid?' · £1 ticket':' · free ticket');
+    const steps=12;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(base*i/steps));await new Promise(r2=>setTimeout(r2,26));}
+    if(mult>1){
+      await new Promise(r2=>setTimeout(r2,250));
+      overlay('<h2>MISSION MULTIPLIER</h2><div class="amt">\u00d7'+mult+'</div>',1400);
+      await new Promise(r2=>setTimeout(r2,1300));
+      for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(base+(p-base)*i/steps));await new Promise(r2=>setTimeout(r2,30));}
+    }
+    if(p>=2500)overlay('<h2>'+(p>=100000?'JACKPOT':p>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(p)+'</div>',2000);
+    el('msg').textContent='WON '+fmt(p)+(j.paid?' \u00b7 \u00a31 ticket':' \u00b7 free ticket');
     if(j.remaining!=null&&el('poolleft'))el('poolleft').textContent=j.remaining;
   }catch(e){el('msg').textContent=e.message;}
   spinning=false;meters();
 };
 async function series(){
   try{const j=await (await fetch('/api/slot?action=series&user='+uk)).json();
-    if(j.series&&el('poolleft')){el('poolleft').textContent=j.series.total-j.series.sold;
-      window._pl=j.series.prizes_left;}
+    if(j.series&&el('poolleft')){el('poolleft').textContent=(j.series.total-j.series.sold).toLocaleString();
+      window._pl=j.series.prizes_left;
+      const top=Math.max(...Object.keys(j.series.prizes_left).map(Number));
+      if(el('pooltop'))el('pooltop').textContent=fmt(top).replace('.00','');}
   }catch(e){}
 }
 el('pt').onclick=()=>{
   const pl=window._pl||{};
   const rows=Object.entries(pl).sort((a,b)=>b[0]-a[0]).map(([p,n])=>'<tr><td>'+fmt(+p)+'</td><td>'+n+' left</td></tr>').join('');
-  overlay('<h2>PRIZES LEFT</h2><table>'+(rows||'<tr><td>Loading…</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">Series 1 · 10,000 tickets · every prize fixed before sale · every ticket wins · reels are display only</p>');
+  overlay('<h2>PRIZES LEFT</h2><table>'+(rows||'<tr><td>Loading…</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">100,000 tickets this series · every prize fixed before sale · top prize £10,000 · every ticket wins · reels are display only</p>');
 };
 function meters(){el('bal').textContent=fmt(won);el('betv').textContent=spinsLeft;el('spin').textContent=spinsLeft>0?'SPIN — FREE TICKET':'SPIN — £1 TICKET';el('spin').disabled=spinning;}
 draw(spinGrid(Math.random));state();series();
