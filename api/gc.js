@@ -13,8 +13,17 @@ const BIG_CAP = 5000; // max Big Match ENTRIES per featured fixture (500 packs)
 // Match Spice: every pack carries a 5p Match Bonus stake, multiplied by match-level events (cumulative).
 const SPICE_BASE = 5;
 const SPICE = { hat_trick: 20, both_team_hat_tricks: 1000, reds_2plus: 15, reds_4plus: 300, goals_7plus: 15 };
-// Event multipliers applied to the instant win (cumulative): bonus = instant × Σ multipliers
-const MULT = { goal: 10, yellow: 3, red: 20 };
+// Per-entry MISSIONS: drawn at random at purchase, printed on the entry. Bonus = instant × mult if met.
+const CONDS = [
+  { code: 'booked',      label: 'TO BE BOOKED',            mult: 7,   w: .35 },
+  { code: 'scores',      label: 'TO SCORE',                mult: 30,  w: .18 },
+  { code: 'score_win',   label: 'SCORE + TEAM WINS',       mult: 45,  w: .07 },
+  { code: 'first_goal',  label: 'FIRST GOAL OF THE MATCH', mult: 60,  w: .07 },
+  { code: 'score_booked',label: 'SCORE + BOOKED',          mult: 100, w: .10 },
+  { code: 'scores2',     label: '2+ GOALS',                mult: 120, w: .08 },
+  { code: 'sent_off',    label: 'SENT OFF',                mult: 150, w: .12 },
+  { code: 'hat_trick',   label: 'HAT-TRICK',               mult: 750, w: .03 }];
+const drawCond = () => { let r = Math.random(), acc = 0; for (const x of CONDS) { acc += x.w; if (r < acc) return x; } return CONDS[0]; };
 const PER_GOAL = { G: 0, D: 0, M: 0, F: 0 }; // legacy column, unused in multiplier model
 const SALE_WINDOW_H = 72;
 
@@ -160,7 +169,9 @@ module.exports = async (req, res) => {
       for (let i = 0; i < PACK_SIZE; i++) {
         const draw = drawCash();
         if (!draw.bonus) { entries.push({ cash_pence: draw.pence, match_id: null, fixture: null, kickoff: null, player_name: null, position: null, team_name: null, per_goal_pence: 0 }); continue; }
-        let e = { cash_pence: draw.pence, match_id: fx.id, fixture: (fx.home || '') + ' v ' + (fx.away || ''), kickoff: fx.kickoff, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
+        const cond = drawCond();
+        let e = { cash_pence: draw.pence, match_id: fx.id, fixture: (fx.home || '') + ' v ' + (fx.away || ''), kickoff: fx.kickoff, player_name: null, position: null, team_name: null, per_goal_pence: 0,
+          cond_code: cond.code, cond_label: cond.label, cond_mult: cond.mult };
         if (xi) { const p = pickFrom(xi); e = { ...e, player_name: p.player_name, position: p.position, team_name: p.team_name }; }
         entries.push(e);
       }
@@ -200,14 +211,15 @@ module.exports = async (req, res) => {
           if (m.status === 'finished') {
             let ev = {};
             const perPlayerTeamFill = {};
-            const tally = (list) => (list || []).forEach(e => {
+            let tlEvents = null;
+            const tally = (list) => { tlEvents = list || []; (list || []).forEach(e => {
               if (!e.player) return;
               if (e.team && e.team.name) perPlayerTeamFill[e.player.name] = e.team.name;
               const p = ev[e.player.name] = ev[e.player.name] || { g: 0, y: 0, r: 0 };
               if (e.type === 'goal') p.g++;
               else if (e.type === 'yellow_card') p.y++;
               else if (/red/.test(e.type || '')) p.r++;
-            });
+            }); };
             try {
               const tl = await tsa(`/football/matches/${mid}/timeline?event_type=goal,yellow_card,red_card`);
               tally(tl.data && tl.data.events);
@@ -224,8 +236,15 @@ module.exports = async (req, res) => {
             if (redsTotal >= 2) smult += SPICE.reds_2plus;
             if (redsTotal >= 4) smult += SPICE.reds_4plus;
             if (goalsTotal >= 7) smult += SPICE.goals_7plus;
+            // first goal + winner for mission evaluation
+            let firstScorer = null, firstMin = 1e9;
+            const rawEvents = [];
+            // rebuild raw list from tally source: re-tally with minutes
+            // (ev holds totals; firstScorer needs event minutes — captured below in tallyRaw)
+            const winner = (m.score && m.score.home != null) ? (m.score.home > m.score.away ? m.home_team.name : m.score.away > m.score.home ? m.away_team.name : null) : null;
+            if (tlEvents) tlEvents.forEach(e => { if (e.type === 'goal' && e.player && (e.minute || 0) < firstMin) { firstMin = e.minute || 0; firstScorer = e.player.name; } });
             // need cash_pence for multiplier — fetch fresh
-            const tk2 = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,cash_pence,pack_id`, { headers: sbH })).json();
+            const tk2 = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,cash_pence,pack_id,team_name,cond_code,cond_mult`, { headers: sbH })).json();
             if (smult > 0) {
               const packs = {};
               tk2.forEach(t => { if (t.pack_id) packs[t.pack_id] = t.user_key; });
@@ -239,8 +258,19 @@ module.exports = async (req, res) => {
             for (const t of tk2) {
               if (!t.player_name) continue; // no sheet ever confirmed — leave open for manual review
               const e = ev[t.player_name] || { g: 0, y: 0, r: 0 };
-              const mult = e.g * MULT.goal + e.y * MULT.yellow + e.r * MULT.red;
-              const bonus = (t.cash_pence || 0) * mult;
+              let met = false;
+              switch (t.cond_code) {
+                case 'booked': met = e.y >= 1; break;
+                case 'scores': met = e.g >= 1; break;
+                case 'scores2': met = e.g >= 2; break;
+                case 'hat_trick': met = e.g >= 3; break;
+                case 'sent_off': met = e.r >= 1; break;
+                case 'score_booked': met = e.g >= 1 && e.y >= 1; break;
+                case 'score_win': met = e.g >= 1 && winner && t.team_name === winner; break;
+                case 'first_goal': met = firstScorer === t.player_name; break;
+                default: met = false;
+              }
+              const bonus = met ? (t.cash_pence || 0) * (t.cond_mult || 0) : 0;
               await fetch(SB + `/rest/v1/gc_tickets?id=eq.${t.id}`, { method: 'PATCH', headers: sbH,
                 body: JSON.stringify({ settled: true, goals: e.g, cards: e.y, reds: e.r, bonus_pence: bonus }) });
               if (bonus > 0) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
