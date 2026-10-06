@@ -49,7 +49,7 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
 <div class="cab"><div class="inner">
   <div class="marq">GOAL<em>RUSH</em> SLOT</div>
   <div class="tag">MISSION MULTIPLIER · 10 LINES · CONCEPT DEMO</div>
-  <div class="fs" id="fsbar">FREE SPINS · <b id="fsn">0</b> LEFT · ALL WINS ×2 · 🟥🟥 = +1 SPIN</div>
+  <div class="fs" id="fsbar" style="display:block">SERIES 1 · <b id="poolleft">—</b> TICKETS LEFT · TOP PRIZE £500</div>
   <div class="reels" id="reels"></div>
   <div class="meters">
     <div class="mt"><span>BALANCE</span><b id="bal">£0.00</b></div>
@@ -186,13 +186,13 @@ el('spin').onclick=async()=>{
     const steps=14;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(j.prize_pence*i/steps));await new Promise(r2=>setTimeout(r2,26));}
     if(j.prize_pence>=2500)overlay('<h2>'+(j.prize_pence>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(j.prize_pence)+'</div>',1900);
     el('msg').textContent='WON '+fmt(j.prize_pence)+(j.paid?' · £1 ticket':' · free ticket');
-    if(j.remaining!=null)el('poolleft').textContent=j.remaining;
+    if(j.remaining!=null&&el('poolleft'))el('poolleft').textContent=j.remaining;
   }catch(e){el('msg').textContent=e.message;}
   spinning=false;meters();
 };
 async function series(){
   try{const j=await (await fetch('/api/slot?action=series&user='+uk)).json();
-    if(j.series){el('poolleft').textContent=j.series.total-j.series.sold;
+    if(j.series&&el('poolleft')){el('poolleft').textContent=j.series.total-j.series.sold;
       window._pl=j.series.prizes_left;}
   }catch(e){}
 }
