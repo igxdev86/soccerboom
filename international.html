@@ -75,7 +75,7 @@ async function load(){
     let html='',lastComp='';
     data.forEach((m,i)=>{
       if(m.competition!==lastComp){html+=`<div class="comphead">${esc(m.competition)}</div>`;lastComp=m.competition;}
-      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
       const mid=m.result?`<div class="mid${m.status==='live'?'" style="background:var(--bulb);color:var(--ink)':''}">${m.result}</div>`:`<div class="mid sched">${ko}</div>`;
       html+=`<div class="match" data-i="${i}"><div class="row"><div class="team h">${esc(m.home)}</div>${mid}<div class="team">${esc(m.away)}</div></div><div class="study" id="st${i}" hidden></div></div>`;
     });
