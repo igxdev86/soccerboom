@@ -141,7 +141,7 @@ async function initAuth(){
   try{
     const cfg=await (await fetch('/api/gc-config')).json();
     if(!cfg.url||!cfg.anon){
-      $('acctOut').innerHTML='<span style="color:var(--red)">Sign-in isn\u2019t switched on yet.</span> Add SUPABASE_ANON_KEY in Vercel (the anon public key from Supabase \u2192 Settings \u2192 API), then Redeploy.';
+      $('acctOut').innerHTML='<span style="color:var(--red)">Sign-in isn\u2019t switched on yet</span> \u2014 demo mode is active: this device plays with a \u00a350 test balance, seeded on your first pack. To enable real accounts later: add SUPABASE_ANON_KEY in Vercel, then Redeploy.';
       return;
     }
     cfgOk=true;
@@ -199,10 +199,10 @@ async function poolInfo(){
   }catch(e){}
 }
 async function buyTicket(kind,btn,label){
-  if(!session){sheet(true);return;}
+  if(!session&&cfgOk){sheet(true);return;}
   btn.disabled=true;btn.textContent='Opening pack\u2026';
   try{
-    const r=await fetch('/api/gc?action=buy'+(kind==='big'?'&kind=big':''),{method:'POST',headers:hdrs()});
+    const r=await fetch('/api/gc?action=buy&user='+uk+(kind==='big'?'&kind=big':''),{method:'POST',headers:hdrs()});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'Error');
     if(j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
@@ -229,7 +229,7 @@ async function load(){
   try{
     const j=await (await fetch('/api/gc?action=tickets&user='+uk,{headers:hdrs()})).json();
     $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
-    if(session&&j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
+    if(j.balance_pence!=null&&(session||!cfgOk)){$('topAcct').textContent=fmt(j.balance_pence);$('topAcct').className='pill ghost';}
     if(!j.tickets||!j.tickets.length){$('tickets').innerHTML='<div class="note">No packs yet.</div>';return;}
     const packs={},order=[];
     j.tickets.forEach(t=>{const k=t.pack_id||'single-'+t.id;if(!packs[k]){packs[k]=[];order.push(k);}packs[k].push(t);});
