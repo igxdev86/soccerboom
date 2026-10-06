@@ -81,18 +81,22 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'buy') {
-      if (!user) return res.status(400).json({ error: 'user required' });
+      if (!authed) return res.status(401).json({ error: 'Sign in to play — your balance lives on your account.' });
       const f = await upcomingFixtures();
       if (!f.length) return res.status(409).json({ error: 'No trackable fixtures in the next ' + SALE_WINDOW_H + ' hours.' });
       const fx = pickFrom(f);
       const cash = drawCash();
-      let t = { user_key: user, match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
-        cash_pence: cash, settled: false, player_name: null, position: null, team_name: null, per_goal_pence: 0 };
-      const xi = await confirmedPool(fx.id); // sheet may already be in (<1h to KO)
+      let t = { match_id: fx.id, fixture: fx.home + ' v ' + fx.away, kickoff: fx.kickoff,
+        player_name: null, position: null, team_name: null, per_goal_pence: 0 };
+      const xi = await confirmedPool(fx.id);
       if (xi) { const p = pickFrom(xi); t = { ...t, player_name: p.player_name, position: p.position, team_name: p.team_name, per_goal_pence: PER_GOAL[p.position] || PER_GOAL.M }; }
-      const r = await fetch(SB + '/rest/v1/gc_tickets', { method: 'POST', headers: { ...sbH, Prefer: 'return=representation' }, body: JSON.stringify([t]) });
-      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) });
-      return res.status(200).json({ ticket: (await r.json())[0] });
+      const r = await fetch(SB + '/rest/v1/rpc/gc_buy', { method: 'POST', headers: sbH,
+        body: JSON.stringify({ p_user: authed, p_price: TICKET_PENCE, p_cash: cash, p_ticket: t }) });
+      if (!r.ok) return res.status(502).json({ error: 'DB: ' + (await r.text()).slice(0, 150) + ' — run the wallet SQL' });
+      const out = await r.json();
+      if (out.error === 'insufficient') return res.status(402).json({ error: 'Balance too low — demo top-ups coming with payments.' });
+      const trow = await (await fetch(SB + `/rest/v1/gc_tickets?id=eq.${out.ticket_id}&select=*`, { headers: sbH })).json();
+      return res.status(200).json({ ticket: trow[0], balance_pence: out.balance });
     }
 
     if (action === 'tickets') {
@@ -102,7 +106,7 @@ module.exports = async (req, res) => {
       for (const mid of open) {
         try {
           const m = (await tsa(`/football/matches/${mid}`)).data;
-          const tk = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,player_name,per_goal_pence`, { headers: sbH })).json();
+          const tk = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,per_goal_pence`, { headers: sbH })).json();
           const pending = tk.filter(t => !t.player_name);
           // 1) Assign players once the sheet is confirmed (or the match has been played).
           if (pending.length) {
@@ -126,14 +130,21 @@ module.exports = async (req, res) => {
               const g = goals[t.player_name] || 0;
               await fetch(SB + `/rest/v1/gc_tickets?id=eq.${t.id}`, { method: 'PATCH', headers: sbH,
                 body: JSON.stringify({ settled: true, goals: g, bonus_pence: g * t.per_goal_pence }) });
+              if (g > 0) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
+                body: JSON.stringify({ p_user: t.user_key, p_amount: g * t.per_goal_pence, p_reason: 'goal_bonus', p_ticket: t.id }) }).catch(() => {});
             }
           }
         } catch (e) {}
       }
       const all = await (await fetch(SB + `/rest/v1/gc_tickets?user_key=eq.${encodeURIComponent(user)}&select=*&order=created_at.desc&limit=50`, { headers: sbH })).json();
       const won = all.reduce((s, t) => s + (t.cash_pence || 0) + (t.bonus_pence || 0), 0);
+      let balance = null;
+      if (authed) {
+        const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(authed)}&select=balance_pence`, { headers: sbH })).json();
+        balance = w[0] ? w[0].balance_pence : null;
+      }
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ tickets: all, spent_pence: all.length * TICKET_PENCE, won_pence: won });
+      return res.status(200).json({ tickets: all, spent_pence: all.length * TICKET_PENCE, won_pence: won, balance_pence: balance });
     }
 
     if (action === 'fav_add' || action === 'fav_del') {
@@ -183,8 +194,11 @@ module.exports = async (req, res) => {
       const bonus = all.reduce((s, t) => s + (t.bonus_pence || 0), 0);
       const byPos = {};
       all.forEach(t => { const k = t.position || 'pending'; const p = byPos[k] = byPos[k] || { n: 0, goals: 0, bonus: 0 }; p.n++; p.goals += t.goals || 0; p.bonus += t.bonus_pence || 0; });
+      const wallets = await (await fetch(SB + '/rest/v1/gc_wallet?select=balance_pence&limit=10000', { headers: sbH })).json().catch(() => []);
+      const liability = (wallets || []).reduce((s, w) => s + (w.balance_pence || 0), 0);
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ tickets: n, users: new Set(all.map(t => t.user_key)).size,
+        wallet_liability_pence: liability,
         revenue_pence: spent, instant_paid_pence: cash, bonus_paid_pence: bonus,
         rtp_pct: n ? +(((cash + bonus) / spent) * 100).toFixed(1) : null,
         unsettled: all.filter(t => !t.settled).length,
