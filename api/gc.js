@@ -4,8 +4,12 @@ const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY, KEY 
 const sbH = { apikey: SK, Authorization: 'Bearer ' + SK, 'Content-Type': 'application/json' };
 
 const TICKET_PENCE = 100;
-const CASH = [[50, .20], [100, .08], [200, .04], [500, .015], [1000, .004], [10000, .0005]];
-const PER_GOAL = { G: 25000, D: 2500, M: 500, F: 200 };
+// Guaranteed-win table: every ticket pays. Ordered checks; 4p is the floor.
+const CASH = [[10000, .0005], [1000, .0015], [500, .004], [200, .01], [100, .024], [50, .04], [25, .07], [10, .15]];
+const CASH_FLOOR = 4;
+// Event multipliers applied to the instant win (cumulative): bonus = instant × Σ multipliers
+const MULT = { goal: 10, yellow: 3, red: 20 };
+const PER_GOAL = { G: 0, D: 0, M: 0, F: 0 }; // legacy column, unused in multiplier model
 const SALE_WINDOW_H = 72;
 
 async function tsa(path) {
@@ -43,7 +47,7 @@ async function upcomingFixtures() {
   fxCache = { at: Date.now(), f };
   return f;
 }
-const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return 0; };
+const drawCash = () => { let r = Math.random(), acc = 0; for (const [p, pr] of CASH) { acc += pr; if (r < acc) return p; } return CASH_FLOOR; };
 const pickFrom = a => a[Math.floor(Math.random() * a.length)];
 
 // Confirmed-XI pool for a match, or null if sheet not confirmed yet (played matches count as confirmed).
@@ -120,18 +124,31 @@ module.exports = async (req, res) => {
           }
           // 2) Settle finished matches for assigned tickets.
           if (m.status === 'finished') {
-            let goals = {};
+            let ev = {};
+            const tally = (list) => (list || []).forEach(e => {
+              if (!e.player) return;
+              const p = ev[e.player.name] = ev[e.player.name] || { g: 0, y: 0, r: 0 };
+              if (e.type === 'goal') p.g++;
+              else if (e.type === 'yellow_card') p.y++;
+              else if (/red/.test(e.type || '')) p.r++;
+            });
             try {
-              const tl = await tsa(`/football/matches/${mid}/timeline?event_type=goal`);
-              ((tl.data && tl.data.events) || []).forEach(e => { if (e.player) goals[e.player.name] = (goals[e.player.name] || 0) + 1; });
-            } catch (e) {}
-            for (const t of tk) {
+              const tl = await tsa(`/football/matches/${mid}/timeline?event_type=goal,yellow_card,red_card`);
+              tally(tl.data && tl.data.events);
+            } catch (e1) {
+              try { const tl = await tsa(`/football/matches/${mid}/timeline`); tally(tl.data && tl.data.events); } catch (e2) {}
+            }
+            // need cash_pence for multiplier — fetch fresh
+            const tk2 = await (await fetch(SB + `/rest/v1/gc_tickets?match_id=eq.${mid}&settled=eq.false&select=id,user_key,player_name,cash_pence`, { headers: sbH })).json();
+            for (const t of tk2) {
               if (!t.player_name) continue; // no sheet ever confirmed — leave open for manual review
-              const g = goals[t.player_name] || 0;
+              const e = ev[t.player_name] || { g: 0, y: 0, r: 0 };
+              const mult = e.g * MULT.goal + e.y * MULT.yellow + e.r * MULT.red;
+              const bonus = (t.cash_pence || 0) * mult;
               await fetch(SB + `/rest/v1/gc_tickets?id=eq.${t.id}`, { method: 'PATCH', headers: sbH,
-                body: JSON.stringify({ settled: true, goals: g, bonus_pence: g * t.per_goal_pence }) });
-              if (g > 0) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
-                body: JSON.stringify({ p_user: t.user_key, p_amount: g * t.per_goal_pence, p_reason: 'goal_bonus', p_ticket: t.id }) }).catch(() => {});
+                body: JSON.stringify({ settled: true, goals: e.g, cards: e.y, reds: e.r, bonus_pence: bonus }) });
+              if (bonus > 0) await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH,
+                body: JSON.stringify({ p_user: t.user_key, p_amount: bonus, p_reason: 'event_bonus', p_ticket: t.id }) }).catch(() => {});
             }
           }
         } catch (e) {}
