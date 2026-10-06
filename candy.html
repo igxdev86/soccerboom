@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060810">
+<title>CANDYRUSH — win up to £10,000</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#160618;--gold:#E8549B;--gold2:#FFB3D6;--grn:#A855F7;--red:#FF2E7E;--txt:#FFF2FA;--dim:#A383A8}
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:radial-gradient(ellipse at 50% -10%,#3b1040 0%,var(--bg) 60%);color:var(--txt);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 10px 40px}
+.cab{width:100%;max-width:430px;border-radius:22px;padding:3px;background:linear-gradient(160deg,#FFB3D6,#E8549B 30%,#7c2360 70%,#FFB3D6);box-shadow:0 10px 50px rgba(0,0,0,.7)}
+.inner{background:linear-gradient(180deg,#2a0d30,#170722);border-radius:19px;padding:14px 12px 16px}
+.marq{text-align:center;font-weight:700;font-size:1.5rem;letter-spacing:.04em;color:var(--gold2);text-shadow:0 0 24px rgba(217,164,65,.35)}
+.marq em{font-style:normal;color:var(--grn)}
+.tag{text-align:center;color:var(--dim);font-size:.68rem;letter-spacing:.2em;margin:2px 0 10px}
+.reels{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#1c0820;border:2px solid #4a2050;border-radius:12px;padding:8px;box-shadow:inset 0 4px 18px rgba(0,0,0,.8)}
+.reel{display:grid;grid-template-rows:repeat(3,1fr);gap:6px}
+.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.7rem;background:linear-gradient(180deg,#361239,#220a28);border:1px solid #5c2a60;border-radius:9px}
+.cell.hit{animation:glow .7s infinite alternate;border-color:var(--gold2)}
+@keyframes glow{from{box-shadow:0 0 4px rgba(246,212,124,.5)}to{box-shadow:0 0 18px rgba(246,212,124,.95);transform:scale(1.06)}}
+.meters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 10px}
+.mt{background:#1c0820;border:1px solid #4a2050;border-radius:10px;padding:7px 8px;text-align:center}
+.mt span{display:block;font-size:.58rem;letter-spacing:.14em;color:var(--dim)}
+.mt b{font-size:1.02rem;color:var(--gold2)}
+.ctrl{display:flex;gap:8px;align-items:stretch}
+button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer}
+.bet{flex:1;display:flex;align-items:center;justify-content:space-between;background:#1c0820;border:1px solid #4a2050;border-radius:12px;padding:0 6px}
+.bet button{background:#3d1545;color:var(--txt);width:36px;height:36px;border-radius:9px;font-size:1.1rem}
+.spin{flex:1.3;background:linear-gradient(180deg,#c084fc,var(--grn) 60%,#6b21a8);color:#fff;font-size:1.15rem;padding:14px 0;box-shadow:0 4px 0 #4c1d7a}
+.spin:active{transform:translateY(2px);box-shadow:0 2px 0 #4c1d7a}
+.spin:disabled{filter:grayscale(.7);box-shadow:none}
+.sub{display:flex;gap:8px;margin-top:10px}
+.sub button{flex:1;background:#3d1545;color:var(--dim);padding:10px 0;font-size:.8rem}
+.msg{text-align:center;min-height:22px;margin-top:10px;font-weight:700;color:var(--gold2)}
+.fs{display:none;text-align:center;background:linear-gradient(90deg,transparent,rgba(217,164,65,.18),transparent);border-top:1px solid var(--gold);border-bottom:1px solid var(--gold);padding:5px;margin:8px 0;color:var(--gold2);font-size:.8rem;letter-spacing:.12em}
+#ov{position:fixed;inset:0;background:rgba(3,5,10,.88);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+#ov .box{background:linear-gradient(180deg,#3b1040,#170722);border:2px solid var(--gold);border-radius:18px;padding:26px 22px;text-align:center;max-width:380px;width:100%;max-height:80vh;overflow-y:auto}
+#ov h2{color:var(--gold2);font-size:1.5rem;letter-spacing:.06em}
+#ov .amt{font-size:2.6rem;font-weight:700;color:var(--gold2);margin:8px 0}
+#ov table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:10px}
+#ov td{padding:5px;border-bottom:1px solid #4a2050;text-align:left}
+#ov td:last-child{text-align:right;color:var(--gold2)}
+.note{color:var(--dim);font-size:.72rem;text-align:center;margin-top:14px;line-height:1.6;max-width:430px}
+.note a{color:var(--grn)}
+/* bonus round */
+#bstage{position:fixed;inset:0;z-index:55;display:none;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 20%,#6d1b5e 0%,#2a0a2e 55%,#160618 100%);padding:20px}
+#bstage.on{display:flex}
+.btitle{font-weight:700;letter-spacing:.14em;color:var(--gold2);font-size:1.3rem;text-shadow:0 0 20px rgba(246,212,124,.5);animation:bpulse 1s infinite alternate}
+@keyframes bpulse{to{transform:scale(1.05)}}
+.goalbox{position:relative;width:min(320px,80vw);height:150px;margin:26px 0 10px}
+.frame{position:absolute;inset:0;border:5px solid #fff;border-bottom:none;border-radius:4px 4px 0 0;box-shadow:0 0 30px rgba(255,255,255,.25)}
+.net{position:absolute;inset:5px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 14px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 14px)}
+.goalbox.shake .frame,.goalbox.shake .net{animation:shk .35s}
+@keyframes shk{25%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}75%{transform:translate(2px,1px)}}
+#ball{position:absolute;left:50%;bottom:-70px;transform:translateX(-50%);font-size:2.4rem;transition:all .45s cubic-bezier(.2,.8,.3,1)}
+#ball.fly{bottom:70px;font-size:1.3rem}
+.mtiles{display:flex;gap:10px;margin:14px 0;min-height:56px}
+.mtile{min-width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2800;font-weight:700;font-size:1.25rem;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(217,164,65,.45);animation:slam .3s}
+@keyframes slam{from{transform:scale(2.2);opacity:0}to{transform:scale(1);opacity:1}}
+.brun{color:#fff;font-size:1.05rem}
+.brun b{color:var(--gold2);font-size:1.8rem}
+.gflash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:#fff;text-shadow:0 0 24px #fff;opacity:0;pointer-events:none}
+.gflash.on{animation:gf .7s}
+@keyframes gf{20%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(1.3)}}
+</style>
+</head>
+<body>
+<div class="cab"><div class="inner">
+  <div class="marq">CANDY<em>RUSH</em></div>
+  <div class="tag" style="color:var(--gold2);font-size:.85rem;letter-spacing:.14em;font-weight:700">WIN UP TO £10,000</div>
+  <div class="fs" id="fsbar" style="display:block"><b id="poolleft">—</b> TICKETS · <b id="poolfund">—</b> PRIZE MONEY LEFT · TOP <b id="pooltop">£10,000</b></div>
+  <div class="reels" id="reels"></div>
+  <div class="meters">
+    <div class="mt"><span>BALANCE</span><b id="bal">£0.00</b></div>
+    <div class="mt"><span>TICKET</span><b id="betv">0</b></div>
+    <div class="mt"><span>WIN</span><b id="winv">£0.00</b></div>
+  </div>
+  <div class="ctrl">
+    <button class="spin" id="spin" style="flex:1">SPIN — £5 TICKET</button>
+  </div>
+  <div class="sub"><button id="pt">PRIZES LEFT</button></div>
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <input id="codein" placeholder="Enter a free ticket code" style="flex:1;background:#1c0820;border:1px solid #4a2050;border-radius:10px;color:var(--txt);font-family:inherit;padding:11px 12px;font-size:.9rem">
+    <button id="codego" style="background:#3d1545;color:var(--gold2);padding:0 16px">CLAIM</button>
+  </div>
+  <div class="msg" id="msg">Instant-win draw · every ticket wins · free entry route in rules</div>
+</div></div>
+<div id="agegate" style="position:fixed;inset:0;background:rgba(3,5,10,.97);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:linear-gradient(180deg,#3b1040,#170722);border:2px solid var(--gold);border-radius:18px;padding:24px;max-width:360px;text-align:center">
+    <div style="font-weight:700;font-size:1.2rem;color:var(--gold2)">18+ only</div>
+    <p style="color:var(--dim);font-size:.85rem;margin:10px 0 16px">GOALRUSH SLOT is a free prize draw — each ticket's prize is predetermined in a published finite pool — the reels only reveal it. Free postal entry route available. Great Britain residents, 18+.</p>
+    <button class="spin" style="width:100%;font-size:1rem;padding:13px" onclick="localStorage.setItem('gc_18','1');document.getElementById('agegate').style.display='none'">I am 18 or over</button>
+  </div>
+</div>
+<div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. Free postal entry route available — identical tickets from the identical pool. 18+, GB residents.<br><a href="/">← Home</a></div>
+<div id="ov"><div class="box" id="ovbox"></div></div>
+<div id="bstage">
+  <div class="btitle">BONUS ROUND · SWEET DROP</div>
+  <div class="goalbox" id="goalbox"><div class="frame"></div><div class="net"></div><div id="ball">🍬</div><div class="gflash" id="gflash">SWEET!</div></div>
+  <div class="mtiles" id="mtiles"></div>
+  <div class="brun">TOTAL MULTIPLIER <b id="brun">×1</b></div>
+</div>
+<script>
+"use strict";
+// GOALRUSH SLOT core — 5x3, 10 lines, left-to-right
+const SYM = { W:'\u2b50', SC:'\ud83c\udfc6', GOAL:'\u26bd', RED:'\ud83d\udfe5', BOOT:'\ud83d\udc5f', GLOVE:'\ud83e\uddf4', YEL:'\ud83d\udfe8', SHIRT:'\ud83d\udc55', WHIS:'\ud83d\udce3' };
+// Reel strips (weights by repetition). Tuned by simulation.
+const STRIPS = [
+ 'GOAL RED BOOT YEL SHIRT WHIS BOOT GLOVE YEL SHIRT WHIS W GOAL BOOT YEL SHIRT WHIS GLOVE SC BOOT YEL SHIRT WHIS GLOVE RED YEL SHIRT WHIS BOOT GLOVE SHIRT WHIS'.split(' '),
+ 'RED GOAL BOOT YEL SHIRT WHIS GLOVE BOOT YEL SHIRT WHIS W GOAL YEL SHIRT WHIS GLOVE SC BOOT YEL SHIRT WHIS GLOVE RED SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS GOAL'.split(' '),
+ 'GOAL BOOT YEL SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W YEL SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE RED SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS SC'.split(' '),
+ 'BOOT GOAL YEL SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W YEL SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS RED GOAL'.split(' '),
+ 'YEL GOAL BOOT SHIRT WHIS GLOVE RED BOOT YEL SHIRT WHIS W SHIRT WHIS GLOVE SC GOAL BOOT YEL SHIRT WHIS GLOVE SHIRT WHIS BOOT YEL GLOVE SHIRT WHIS RED SC GOAL'.split(' ')];
+const LINES = [[1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,1,2,1],[1,2,1,0,1],[0,1,1,1,2]];
+// pays in line-bet multiples for 3/4/5
+const PAYS = { GOAL:[50,150,1000], RED:[35,100,400], BOOT:[20,50,150], GLOVE:[15,40,120], YEL:[10,25,80], SHIRT:[5,15,50], WHIS:[5,12,40], W:[60,250,2000] };
+const SCATTER_PAY = [3,15,100]; // total-bet multiples for 3/4/5 SC
+
+function spinGrid(rng){
+  const g=[];
+  for(let r=0;r<5;r++){const s=STRIPS[r],i=Math.floor(rng()*s.length);g.push([s[i],s[(i+1)%s.length],s[(i+2)%s.length]]);}
+  return g; // g[reel][row]
+}
+function evaluate(grid, totalBet, rng){
+  const lineBet = totalBet/10;
+  let win=0; const hits=[];
+  for(let li=0;li<10;li++){
+    const line=LINES[li];
+    const syms=line.map((row,reel)=>grid[reel][row]);
+    let first=syms[0]==='W'?null:syms[0], n=0;
+    for(const s of syms){
+      if(s==='SC')break;
+      if(s==='W'){n++;continue;}
+      if(first===null)first=s;
+      if(s===first)n++;else break;
+    }
+    if(first===null)first='W';
+    if(first==='SC')continue;
+    if(n>=3&&PAYS[first]){const p=PAYS[first][n-3]*lineBet;win+=p;hits.push({line:li,n,sym:first,pay:p});}
+  }
+  const scN=grid.flat().filter(s=>s==='SC').length;
+  let scPay=0, frees=0;
+  if(scN>=3){scPay=SCATTER_PAY[Math.min(scN,5)-3]*totalBet;win+=scPay;frees=8;}
+  // VAR CHECK: ~1/90 spins, multiplies a winning spin x2-x20 (weighted), or awards 1x bet on a dead spin
+  let varMult=0;
+  if(rng()<1/90){
+    if(win>0){const r=rng();varMult=r<.6?2:r<.85?3:r<.96?5:r<.995?10:20;win*=varMult;}
+    else{varMult=1;win+=totalBet;}
+  }
+  return {win, hits, scatters:scN, scatterPay:scPay, frees, varMult};
+}
+
+
+Object.assign(SYM,{W:'🌈',SC:'🎁',GOAL:'🍭',RED:'🍫',BOOT:'🍬',GLOVE:'🧁',YEL:'🍩',SHIRT:'🍪',WHIS:'🍓'});
+const el=id=>document.getElementById(id);
+const fmt=p=>'£'+(p/100).toFixed(2);
+let uk=localStorage.getItem('gc_user');
+if(!uk){uk='u_'+Math.random().toString(36).slice(2,12);localStorage.setItem('gc_user',uk);}
+if(localStorage.getItem('gc_18'))document.getElementById('agegate').style.display='none';
+let spinsLeft=0,won=0,spinning=false;
+function draw(g,hitCells){
+  el('reels').innerHTML=g.map((col,r)=>'<div class="reel">'+col.map((s,row)=>'<div class="cell'+(hitCells&&hitCells.has(r+'-'+row)?' hit':'')+'">'+SYM[s]+'</div>').join('')+'</div>').join('');
+}
+function rndGrid(){const g=[];for(let r=0;r<5;r++){g.push([0,0,0].map(()=>{const k=Object.keys(SYM);return k[Math.floor(Math.random()*k.length)];}));}return g;}
+function meters(){el('bal').textContent=fmt(won);el('betv').textContent='\u00a35';el('spin').disabled=spinning||spinsLeft<1;}
+function overlay(html,ms){el('ovbox').innerHTML=html;el('ov').style.display='flex';if(ms)setTimeout(()=>el('ov').style.display='none',ms);}
+el('ov').onclick=()=>el('ov').style.display='none';
+el('pt').onclick=()=>{
+  const row=(s,p)=>'<tr><td>'+SYM[s]+' ×3/×4/×5</td><td>'+p.join(' / ')+'× line stake</td></tr>';
+  overlay('<h2>PAYTABLE</h2><table>'+['W','GOAL','RED','BOOT','GLOVE','YEL','SHIRT','WHIS'].map(s=>row(s,PAYS[s])).join('')+'<tr><td>'+SYM.SC+' 3/4/5 scatter</td><td>3 / 15 / 100× stake + FREE GAMES</td></tr></table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">10 lines · ⭐ wild · 10p stake equivalent · 3+ '+SYM.SC+' = 8 free games all ×2 · VAR CHECK can upgrade any result</p>');
+};
+async function state(){
+  try{const j=await (await fetch('/api/slot?action=state&user='+uk)).json();spinsLeft=j.spins||0;won=j.balance_pence||0;meters();}catch(e){}
+}
+async function grant(url,btn){
+  btn.disabled=true;
+  try{const r=await fetch(url,{method:'POST'});const j=await r.json();
+    el('msg').textContent=r.ok?('+'+j.granted+' free spins'):(j.error||'Error');
+    if(r.ok){spinsLeft=j.spins;meters();}
+  }catch(e){el('msg').textContent='Error';}
+  btn.disabled=false;
+}
+async function animateTo(final,hitSet){
+  for(let t=0;t<10;t++){draw(rndGrid());await new Promise(r=>setTimeout(r,45));}
+  for(let settle=1;settle<=5;settle++){draw(final.map((c,i)=>i<settle?c:rndGrid()[i]));await new Promise(r=>setTimeout(r,100));}
+  draw(final,hitSet);
+}
+function prizeGrid(p){
+  const pick=(s,n)=>{const g=rndGrid();for(let i=0;i<n;i++)g[i][1]=s;for(let i=n;i<5;i++){if(g[i][1]===s)g[i][1]='SHIRT';}return g;};
+  if(p>=10000)return pick('W',5);
+  if(p>=5000)return pick('GOAL',5);
+  if(p>=2500)return pick('RED',5);
+  if(p>=1000)return pick('BOOT',4);
+  if(p>=500)return pick('GLOVE',4);
+  if(p>=250)return pick('YEL',3);
+  if(p>=100)return pick('SHIRT',3);
+  return pick('WHIS',3);
+}
+const MSTEPS={2:[2],5:[5],10:[2,5],25:[5,5],100:[2,5,10]};
+async function bonusRound(mult){
+  const steps=MSTEPS[mult]||[mult];
+  const st=el('bstage');st.classList.add('on');
+  el('mtiles').innerHTML='';el('brun').textContent='\u00d71';
+  let running=1;
+  await new Promise(r=>setTimeout(r,900));
+  for(let i=0;i<steps.length;i++){
+    const ball=el('ball'),gb=el('goalbox');
+    ball.classList.remove('fly');void ball.offsetWidth;
+    await new Promise(r=>setTimeout(r,i===steps.length-1?650:350)); // extra suspense on the last kick
+    ball.classList.add('fly');
+    await new Promise(r=>setTimeout(r,430));
+    gb.classList.add('shake');el('gflash').classList.add('on');
+    const t=document.createElement('div');t.className='mtile';t.textContent='\u00d7'+steps[i];el('mtiles').appendChild(t);
+    running*=steps[i];el('brun').textContent='\u00d7'+running;
+    await new Promise(r=>setTimeout(r,750));
+    gb.classList.remove('shake');el('gflash').classList.remove('on');
+  }
+  el('brun').textContent='\u00d7'+mult;
+  if(mult>=25){el('mtiles').innerHTML+='';overlayInStage();}
+  await new Promise(r=>setTimeout(r,mult>=25?1500:800));
+  st.classList.remove('on');
+  function overlayInStage(){const d=document.createElement('div');d.className='btitle';d.style.marginTop='10px';d.textContent=mult>=100?'SUGAR MAX!':'SWEET!';el('bstage').appendChild(d);setTimeout(()=>d.remove(),1600);}
+}
+el('spin').onclick=async()=>{
+  if(spinning)return;
+  spinning=true;meters();el('winv').textContent=fmt(0);el('msg').textContent='';
+  try{
+    const r=await fetch('/api/slot?action=spin&game=10&user='+uk,{method:'POST'});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error');
+    spinsLeft=j.spins;won=j.balance_pence;
+    // Base and bonus multiplier are BOTH fixed on the ticket at the server draw; reels display them.
+    const p=j.prize_pence, base=j.base_pence||p, mult=j.mult||1;
+    const g=prizeGrid(base);
+    const hs=new Set();for(let i=0;i<5;i++)hs.add(i+'-1');
+    await animateTo(g,hs);
+    const steps=12;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(base*i/steps));await new Promise(r2=>setTimeout(r2,26));}
+    if(mult>1){
+      await new Promise(r2=>setTimeout(r2,350));
+      await bonusRound(mult);
+      const st2=14;for(let i=1;i<=st2;i++){el('winv').textContent=fmt(Math.round(base+(p-base)*i/st2));await new Promise(r2=>setTimeout(r2,32));}
+    }
+    if(p>=2500)overlay('<h2>'+(p>=1000000?'\u00a310,000 JACKPOT':p>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(p)+'</div>',2200);
+    el('msg').textContent='WON '+fmt(p)+(mult>1?' ('+fmt(base)+' \u00d7'+mult+')':'')+' \u00b7 \u00a35 ticket';
+    if(j.remaining!=null&&el('poolleft'))el('poolleft').textContent=(+j.remaining).toLocaleString();
+    if(window._fund!=null&&el('poolfund')){window._fund-=p;el('poolfund').textContent='\u00a3'+Math.round(window._fund/100).toLocaleString();}
+  }catch(e){el('msg').textContent=e.message;}
+  spinning=false;meters();
+};
+async function series(){
+  try{const j=await (await fetch('/api/slot?action=series&game=10&user='+uk)).json();
+    if(j.series&&el('poolleft')){el('poolleft').textContent=(j.series.total-j.series.sold).toLocaleString();
+      window._pl=j.series.prizes_left;
+      let fund=0,top=0;
+      Object.entries(j.series.prizes_left).forEach(([k,n])=>{const q=String(k).split('|');const v=q.length>1?(+q[0])*(+q[1]):+q[0];fund+=v*n;if(v>top)top=v;});
+      window._fund=fund;
+      if(el('poolfund'))el('poolfund').textContent='\u00a3'+Math.round(fund/100).toLocaleString();
+      if(el('pooltop'))el('pooltop').textContent=fmt(top).replace('.00','');}
+  }catch(e){}
+}
+el('pt').onclick=()=>{
+  const pl=window._pl||{};
+  const symsFor=b=>{
+    const rep=(s,n)=>SYM[s].repeat(n);
+    if(b>=10000)return rep('W',5);if(b>=5000)return rep('GOAL',5);if(b>=2500)return rep('RED',5);
+    if(b>=1000)return rep('BOOT',4);if(b>=500)return rep('GLOVE',4);if(b>=250)return rep('YEL',3);
+    if(b>=100)return rep('SHIRT',3);return rep('WHIS',3);
+  };
+  const rows=Object.entries(pl).map(([k,n])=>{
+    const q=String(k).split('|');const b=+q[0],m=q.length>1?+q[1]:1;
+    return {b,m,v:b*m,n};
+  }).sort((a,x)=>x.v-a.v).map(r=>
+    '<tr><td style="font-size:1.05rem;letter-spacing:2px">'+symsFor(r.b)+(r.m>1?' <span style="color:var(--gold2);font-weight:700">\u00d7'+r.m+'</span>':'')+'</td>'+
+    '<td style="font-weight:700">'+fmt(r.v)+'</td><td>'+r.n.toLocaleString()+' left</td></tr>').join('');
+  const fund=window._fund!=null?'\u00a3'+Math.round(window._fund/100).toLocaleString():'\u2014';
+  overlay('<h2>PRIZES LEFT</h2><p style="color:var(--gold2);font-weight:700;margin-top:4px">'+fund+' still to be won</p><table><thead><tr><td style="color:var(--dim)">Reveal</td><td style="color:var(--dim)">Prize</td><td style="color:var(--dim)">Remaining</td></tr></thead>'+(rows||'<tr><td>Loading\u2026</td></tr>')+'</table><p style="color:var(--dim);font-size:.8rem;margin-top:10px">20,000 tickets this series \u00b7 every prize and bonus multiplier fixed before sale \u00b7 every ticket wins \u00b7 reels are display only</p>');
+};
+function meters(){el('bal').textContent=fmt(won);el('betv').textContent='\u00a35';el('spin').textContent=spinsLeft>0?'SPIN — FREE TICKET':'SPIN — £5 TICKET';el('spin').disabled=spinning;}
+draw(spinGrid(Math.random));state();series();
+</script>
+</body>
+</html>
