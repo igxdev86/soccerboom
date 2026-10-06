@@ -43,6 +43,26 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
 #ov td:last-child{text-align:right;color:var(--gold2)}
 .note{color:var(--dim);font-size:.72rem;text-align:center;margin-top:14px;line-height:1.6;max-width:430px}
 .note a{color:var(--grn)}
+/* bonus round */
+#bstage{position:fixed;inset:0;z-index:55;display:none;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 20%,#14532d 0%,#06220f 55%,#04140a 100%);padding:20px}
+#bstage.on{display:flex}
+.btitle{font-weight:700;letter-spacing:.14em;color:var(--gold2);font-size:1.3rem;text-shadow:0 0 20px rgba(246,212,124,.5);animation:bpulse 1s infinite alternate}
+@keyframes bpulse{to{transform:scale(1.05)}}
+.goalbox{position:relative;width:min(320px,80vw);height:150px;margin:26px 0 10px}
+.frame{position:absolute;inset:0;border:5px solid #fff;border-bottom:none;border-radius:4px 4px 0 0;box-shadow:0 0 30px rgba(255,255,255,.25)}
+.net{position:absolute;inset:5px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 14px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 14px)}
+.goalbox.shake .frame,.goalbox.shake .net{animation:shk .35s}
+@keyframes shk{25%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}75%{transform:translate(2px,1px)}}
+#ball{position:absolute;left:50%;bottom:-70px;transform:translateX(-50%);font-size:2.4rem;transition:all .45s cubic-bezier(.2,.8,.3,1)}
+#ball.fly{bottom:70px;font-size:1.3rem}
+.mtiles{display:flex;gap:10px;margin:14px 0;min-height:56px}
+.mtile{min-width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,var(--gold2),var(--gold));color:#3a2800;font-weight:700;font-size:1.25rem;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(217,164,65,.45);animation:slam .3s}
+@keyframes slam{from{transform:scale(2.2);opacity:0}to{transform:scale(1);opacity:1}}
+.brun{color:#fff;font-size:1.05rem}
+.brun b{color:var(--gold2);font-size:1.8rem}
+.gflash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:2rem;color:#fff;text-shadow:0 0 24px #fff;opacity:0;pointer-events:none}
+.gflash.on{animation:gf .7s}
+@keyframes gf{20%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(1.3)}}
 </style>
 </head>
 <body>
@@ -75,6 +95,12 @@ button{font-family:inherit;font-weight:700;border:none;border-radius:12px;cursor
 </div>
 <div class="note"> GOALRUSH mechanics as a slot. ⚽ goals pay top, 🟥 red cards fuel the feature, 🏆 3+ trophies = MISSION FREE SPINS (all wins ×2, 🟥🟥 in view adds a spin, retriggers +4), and a random VAR CHECK can multiply any win up to ×20 - or pay out a dead spin. Free postal entry route available — identical tickets from the identical pool. 18+, GB residents.<br><a href="/">← Home</a></div>
 <div id="ov"><div class="box" id="ovbox"></div></div>
+<div id="bstage">
+  <div class="btitle">BONUS ROUND · PENALTY SHOOTOUT</div>
+  <div class="goalbox" id="goalbox"><div class="frame"></div><div class="net"></div><div id="ball">⚽</div><div class="gflash" id="gflash">GOAL!</div></div>
+  <div class="mtiles" id="mtiles"></div>
+  <div class="brun">TOTAL MULTIPLIER <b id="brun">×1</b></div>
+</div>
 <script>
 "use strict";
 // GOALRUSH SLOT core — 5x3, 10 lines, left-to-right
@@ -172,6 +198,31 @@ function prizeGrid(p){
   if(p>=50)return pick('YEL',3);
   return pick('SHIRT',3);
 }
+const MSTEPS={2:[2],5:[5],10:[2,5],25:[5,5],100:[2,5,10]};
+async function bonusRound(mult){
+  const steps=MSTEPS[mult]||[mult];
+  const st=el('bstage');st.classList.add('on');
+  el('mtiles').innerHTML='';el('brun').textContent='\u00d71';
+  let running=1;
+  await new Promise(r=>setTimeout(r,900));
+  for(let i=0;i<steps.length;i++){
+    const ball=el('ball'),gb=el('goalbox');
+    ball.classList.remove('fly');void ball.offsetWidth;
+    await new Promise(r=>setTimeout(r,i===steps.length-1?650:350)); // extra suspense on the last kick
+    ball.classList.add('fly');
+    await new Promise(r=>setTimeout(r,430));
+    gb.classList.add('shake');el('gflash').classList.add('on');
+    const t=document.createElement('div');t.className='mtile';t.textContent='\u00d7'+steps[i];el('mtiles').appendChild(t);
+    running*=steps[i];el('brun').textContent='\u00d7'+running;
+    await new Promise(r=>setTimeout(r,750));
+    gb.classList.remove('shake');el('gflash').classList.remove('on');
+  }
+  el('brun').textContent='\u00d7'+mult;
+  if(mult>=25){el('mtiles').innerHTML+='';overlayInStage();}
+  await new Promise(r=>setTimeout(r,mult>=25?1500:800));
+  st.classList.remove('on');
+  function overlayInStage(){const d=document.createElement('div');d.className='btitle';d.style.marginTop='10px';d.textContent=mult>=100?'MAX MULTIPLIER!':'HUGE!';el('bstage').appendChild(d);setTimeout(()=>d.remove(),1600);}
+}
 el('spin').onclick=async()=>{
   if(spinning)return;
   spinning=true;meters();el('winv').textContent=fmt(0);el('msg').textContent='';
@@ -187,10 +238,9 @@ el('spin').onclick=async()=>{
     await animateTo(g,hs);
     const steps=12;for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(base*i/steps));await new Promise(r2=>setTimeout(r2,26));}
     if(mult>1){
-      await new Promise(r2=>setTimeout(r2,250));
-      overlay('<h2>BONUS MULTIPLIER</h2><div class="amt">\u00d7'+mult+'</div><p style="color:var(--dim)">printed on your ticket</p>',1500);
-      await new Promise(r2=>setTimeout(r2,1400));
-      for(let i=1;i<=steps;i++){el('winv').textContent=fmt(Math.round(base+(p-base)*i/steps));await new Promise(r2=>setTimeout(r2,32));}
+      await new Promise(r2=>setTimeout(r2,350));
+      await bonusRound(mult);
+      const st2=14;for(let i=1;i<=st2;i++){el('winv').textContent=fmt(Math.round(base+(p-base)*i/st2));await new Promise(r2=>setTimeout(r2,32));}
     }
     if(p>=2500)overlay('<h2>'+(p>=1000000?'\u00a310,000 JACKPOT':p>=10000?'MEGA WIN':'BIG WIN')+'</h2><div class="amt">'+fmt(p)+'</div>',2200);
     el('msg').textContent='WON '+fmt(p)+(mult>1?' ('+fmt(base)+' \u00d7'+mult+')':'')+(j.paid?' \u00b7 \u00a31 ticket':' \u00b7 free ticket');
