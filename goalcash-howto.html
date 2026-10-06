@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/goalcash.webmanifest">
+
 <title>GOALCASH — How to Play</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -15,6 +20,9 @@ h1{font-size:1.6rem}h1 em{font-style:normal;color:var(--grn)}
 .dim{color:var(--dim)}a{color:var(--grn)}
 table{width:100%;border-collapse:collapse;margin:8px 0}
 td,th{padding:6px 8px;border-bottom:1px solid var(--hair);text-align:left;font-size:.9rem}
+.gcnav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,18,25,.97);border-top:1px solid var(--hair);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+.gcnav a{flex:1;text-align:center;padding:13px 0 11px;color:var(--dim);text-decoration:none;font-size:.78rem;font-weight:500}
+.gcnav a.on{color:var(--grn)}
 </style>
 </head>
 <body>
@@ -36,5 +44,6 @@ A keeper almost never scores — that's why he's worth £250 when he does. If yo
 <p class="dim">18+, Great Britain residents. A prize draw, not betting — there's nothing to pick and nothing to get right. If it stops being fun, stop: <a href="https://www.begambleaware.org">BeGambleAware.org</a>.</p>
 <p class="dim" style="margin-top:20px"><a href="/goalcash.html">← Play</a> · <a href="/goalcash-rules.html">Terms</a> · <a href="/goalcash-privacy.html">Privacy</a></p>
 </div>
+<nav class="gcnav"><a href="/goalcash.html">Play</a><a href="/goalcash-howto.html" class="on">How to</a><a href="/goalcash-rules.html">Terms</a><a href="/goalcash-privacy.html">Privacy</a></nav>
 </body>
 </html>
