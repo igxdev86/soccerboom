@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TODAY — SoccerBoom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B0E13;--panel:#12161E;--txt:#F2F4F8;--dim:#7C8594;--red:#E8402A;--hair:#1E2430}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.4}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px 90px}
+header{padding:26px 0 14px}
+h1{font-weight:700;font-size:1.9rem;letter-spacing:-.02em}
+h1 .dot{color:var(--red)}
+.sub{color:var(--dim);font-size:.85rem;margin-top:4px}
+.sub a{color:var(--txt);text-decoration:none;border-bottom:1px solid var(--dim)}
+input{width:100%;margin:16px 0 4px;padding:13px 14px;background:var(--panel);border:1px solid var(--hair);border-radius:10px;color:var(--txt);font-family:inherit;font-size:.95rem}
+input::placeholder{color:var(--dim)}
+.comp{margin-top:22px}
+.comp h2{font-size:.78rem;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px}
+.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;overflow:hidden}
+.m{display:grid;grid-template-columns:1fr 84px;align-items:center;gap:8px;padding:13px 16px}
+.m + .m{border-top:1px solid var(--hair)}
+.teams div{font-weight:500;font-size:.96rem;padding:1px 0}
+.right{text-align:right}
+.score{font-weight:700;font-size:1.25rem;line-height:1.3}
+.ko{color:var(--dim);font-weight:500;font-size:.95rem}
+.st{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.st.live{color:var(--red)}
+.st.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:5px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.win{color:var(--txt)}
+.losedim{color:var(--dim)}
+.note{color:var(--dim);text-align:center;padding:40px 0}
+.err{border:1px solid var(--red);border-radius:10px;padding:14px;margin-top:16px;font-size:.9rem}
+.count{color:var(--dim);font-size:.8rem;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TODAY<span class="dot">.</span></h1>
+    <div class="sub" id="sub">Every match on today · <a href="/">SoccerBoom</a> · <a href="/international.html">Internationals</a></div>
+  </header>
+  <input id="q" type="text" placeholder="Filter — team, league or country" autocomplete="off">
+  <div class="count" id="count"></div>
+  <div id="list"><div class="note">Loading today's football…</div></div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let comps={},data=[],timer=null;
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const api=p=>fetch('/api/tsa?path='+encodeURIComponent(p)).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'API '+r.status);return j;});
+
+async function loadComps(){
+  const c=JSON.parse(localStorage.getItem('sb_comps2')||'null');
+  if(c&&Date.now()-c.at<864e5){comps=c.map;return;}
+  const map={};
+  for(let p=1;p<=4;p++){
+    const r=await api(`/football/competitions?per_page=100&page=${p}`);
+    r.data.forEach(x=>map[x.id]={name:x.name,country:x.country||''});
+    if(p>=(r.meta.total_pages||1))break;
+  }
+  comps=map;localStorage.setItem('sb_comps2',JSON.stringify({at:Date.now(),map}));
+}
+
+async function load(){
+  clearTimeout(timer);
+  const d=new Date().toISOString().slice(0,10);
+  try{
+    let all=[];
+    for(let p=1;p<=4;p++){
+      const r=await api(`/football/matches?date_from=${d}&date_to=${d}&per_page=100&page=${p}`);
+      all.push(...r.data);
+      if(p>=(r.meta.total_pages||1))break;
+    }
+    data=all.filter(m=>m.status!=='cancelled'&&m.status!=='postponed');
+    render();
+    if(data.some(m=>m.status==='live'))timer=setTimeout(load,60000);
+  }catch(e){$('list').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
+}
+
+$('q').oninput=render;
+function render(){
+  const q=$('q').value.trim().toLowerCase();
+  const rows=data.filter(m=>{
+    if(!q)return true;
+    const c=comps[m.competition_id]||{name:'',country:''};
+    return (m.home_team.name+' '+m.away_team.name+' '+c.name+' '+c.country).toLowerCase().includes(q);
+  });
+  $('count').textContent=rows.length+' of '+data.length+' matches · '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  if(!rows.length){$('list').innerHTML='<div class="note">Nothing matches that filter.</div>';return;}
+  const groups={};
+  rows.forEach(m=>{
+    const c=comps[m.competition_id]||{name:'Other',country:''};
+    const k=(c.country?c.country+' — ':'')+c.name;
+    (groups[k]=groups[k]||[]).push(m);
+  });
+  $('list').innerHTML=Object.keys(groups).sort().map(k=>{
+    const ms=groups[k].sort((a,b)=>a.utc_date.localeCompare(b.utc_date));
+    return `<div class="comp"><h2>${esc(k)}</h2><div class="card">${ms.map(m=>{
+      const fin=m.status==='finished',live=m.status==='live';
+      const hs=m.score.home,as=m.score.away;
+      const ko=new Date(m.utc_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const hw=fin&&hs>as,aw=fin&&as>hs;
+      const right=(fin||live)
+        ?`<div class="right"><div class="score">${hs}–${as}</div><div class="st${live?' live':''}">${live?(m.live&&m.live.elapsed_minutes?m.live.elapsed_minutes+"'":'LIVE'):'FT'}</div></div>`
+        :`<div class="right"><div class="ko">${ko}</div></div>`;
+      return `<div class="m"><div class="teams"><div class="${aw?'losedim':'win'}">${esc(m.home_team.name)}</div><div class="${hw?'losedim':'win'}">${esc(m.away_team.name)}</div></div>${right}</div>`;
+    }).join('')}</div></div>`;
+  }).join('');
+}
+
+(async()=>{try{await loadComps();await load();}catch(e){$('list').innerHTML=`<div class="err">${esc(e.message)}</div>`;}})();
+</script>
+</body>
+</html>
