@@ -54,7 +54,7 @@ const $=id=>document.getElementById(id);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 let uk=localStorage.getItem('gc_user');
 if(!uk){uk='u_'+Math.random().toString(36).slice(2,12);localStorage.setItem('gc_user',uk);}
-const £=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
+const fmt=p=>'£'+(p/100).toFixed(2).replace(/\.00$/,'');
 
 async function poolInfo(){
   try{const j=await (await fetch('/api/gc?action=pool')).json();
@@ -71,10 +71,10 @@ $('buy').onclick=async()=>{
     const t=j.ticket;
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">${t.cash_pence?'GREAT! YOU\u2019VE WON':'NO INSTANT WIN \u2014 BUT YOU\u2019RE IN THE GAME'}</div>
-      <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?£(t.cash_pence):'£0 instant'}</div>
+      <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'£0 instant'}</div>
       <div class="player">${esc(t.player_name)}</div>
       <div class="fx">${esc(t.team_name)} \u00b7 ${esc(t.fixture)}</div>
-      <div class="pg">${£(t.per_goal_pence)} PER GOAL TONIGHT</div>
+      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL TONIGHT</div>
       <div class="fx">${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT kickoff</div>
     </div>`;
     load();
@@ -84,12 +84,12 @@ $('buy').onclick=async()=>{
 async function load(){
   try{
     const j=await (await fetch('/api/gc?action=tickets&user='+uk)).json();
-    $('spent').textContent=£(j.spent_pence||0);$('won').textContent=£(j.won_pence||0);
+    $('spent').textContent=fmt(j.spent_pence||0);$('won').textContent=fmt(j.won_pence||0);
     if(!j.tickets.length)return;
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
       <div class="l1"><span>${esc(t.player_name)} <span style="color:var(--dim)">(${esc(t.position)})</span></span>
-      <span>${t.cash_pence?£(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+£(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">live/pending</span>'}</span></div>
-      <div class="l2">${esc(t.fixture)} \u00b7 ${£(t.per_goal_pence)}/goal</div>
+      <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">live/pending</span>'}</span></div>
+      <div class="l2">${esc(t.fixture)} \u00b7 ${fmt(t.per_goal_pence)}/goal</div>
     </div>`).join('');
   }catch(e){}
 }
