@@ -30,6 +30,7 @@ input::placeholder{color:var(--dim)}
 .ko{color:var(--dim);font-weight:500;font-size:.95rem}
 .st{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .st.live{color:var(--red)}
+.st.predlab{color:var(--dim)}
 .st.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:5px;animation:pulse 1.4s infinite}
 @keyframes pulse{50%{opacity:.3}}
 .win{color:var(--txt)}
@@ -49,7 +50,7 @@ input::placeholder{color:var(--dim)}
 <div class="wrap">
   <header>
     <h1>TODAY<span class="dot">.</span></h1>
-    <div class="sub" id="sub">Today's matches with team lineups · <a href="/">SoccerBoom</a> · <a href="/international.html">Internationals</a></div>
+    <div class="sub" id="sub">Only matches with a team sheet in hand · <a href="/">SoccerBoom</a> · <a href="/international.html">Internationals</a></div>
   </header>
   <input id="q" type="text" placeholder="Filter — team, league or country" autocomplete="off">
   <div class="count" id="count"></div>
@@ -58,95 +59,53 @@ input::placeholder{color:var(--dim)}
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-let comps={},lineupComps=new Set(),data=[],timer=null;const luCache={};
+let data=[],timer=null;
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-const api=p=>fetch('/api/tsa?path='+encodeURIComponent(p)).then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'API '+r.status);return j;});
-
-async function loadComps(){
-  const c=JSON.parse(localStorage.getItem('sb_comps3')||'null');
-  if(c&&Date.now()-c.at<864e5){comps=c.map;lineupComps=new Set(c.lu);return;}
-  const map={};
-  for(let p=1;p<=4;p++){
-    const r=await api(`/football/competitions?per_page=100&page=${p}`);
-    r.data.forEach(x=>map[x.id]={name:x.name,country:x.country||''});
-    if(p>=(r.meta.total_pages||1))break;
-  }
-  const lu=[];
-  for(let p=1;p<=2;p++){
-    const r=await api(`/coverage/leagues?data_type=lineups&per_page=200&page=${p}`);
-    r.data.forEach(x=>lu.push(x.id));
-    if(p>=(r.meta.total_pages||1))break;
-  }
-  comps=map;lineupComps=new Set(lu);
-  localStorage.setItem('sb_comps3',JSON.stringify({at:Date.now(),map,lu}));
-}
 
 async function load(){
   clearTimeout(timer);
-  const d=new Date().toISOString().slice(0,10);
   try{
-    let all=[];
-    for(let p=1;p<=4;p++){
-      const r=await api(`/football/matches?date_from=${d}&date_to=${d}&per_page=100&page=${p}`);
-      all.push(...r.data);
-      if(p>=(r.meta.total_pages||1))break;
-    }
-    data=all.filter(m=>m.status!=='cancelled'&&m.status!=='postponed'&&lineupComps.has(m.competition_id));
+    const r=await fetch('/api/today');const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'Error '+r.status);
+    data=j.fixtures;
     render();
-    if(data.some(m=>m.status==='live'))timer=setTimeout(load,60000);
+    if(data.some(m=>m.status==='live'))timer=setTimeout(load,120000);
   }catch(e){$('list').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
 }
 
 $('q').oninput=render;
 function render(){
   const q=$('q').value.trim().toLowerCase();
-  const rows=data.filter(m=>{
-    if(!q)return true;
-    const c=comps[m.competition_id]||{name:'',country:''};
-    return (m.home_team.name+' '+m.away_team.name+' '+c.name+' '+c.country).toLowerCase().includes(q);
-  });
-  $('count').textContent=rows.length+' of '+data.length+' lineup-covered matches · '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  if(!rows.length){$('list').innerHTML='<div class="note">Nothing matches that filter.</div>';return;}
+  const rows=data.filter(m=>!q||(m.home+' '+m.away+' '+m.competition).toLowerCase().includes(q));
+  $('count').textContent=rows.length+' matches with team sheets \u00b7 '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  if(!rows.length){$('list').innerHTML='<div class="note">No fixtures with lineups right now. Team sheets land ~1h before kickoff; predicted XIs a few hours out. Check back closer to the evening games.</div>';return;}
   const groups={};
-  rows.forEach(m=>{
-    const c=comps[m.competition_id]||{name:'Other',country:''};
-    const k=(c.country?c.country+' — ':'')+c.name;
-    (groups[k]=groups[k]||[]).push(m);
-  });
+  rows.forEach(m=>(groups[m.competition]=groups[m.competition]||[]).push(m));
   $('list').innerHTML=Object.keys(groups).sort().map(k=>{
-    const ms=groups[k].sort((a,b)=>a.utc_date.localeCompare(b.utc_date));
+    const ms=groups[k];
     return `<div class="comp"><h2>${esc(k)}</h2><div class="card">${ms.map(m=>{
-      const fin=m.status==='finished',live=m.status==='live';
-      const hs=m.score.home,as=m.score.away;
-      const ko=new Date(m.utc_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      const hw=fin&&hs>as,aw=fin&&as>hs;
-      const right=(fin||live)
-        ?`<div class="right"><div class="score">${hs}–${as}</div><div class="st${live?' live':''}">${live?(m.live&&m.live.elapsed_minutes?m.live.elapsed_minutes+"'":'LIVE'):'FT'}</div></div>`
-        :`<div class="right"><div class="ko">${ko}</div></div>`;
-      return `<div class="m" data-id="${m.id}"><div class="teams"><div class="${aw?'losedim':'win'}">${esc(m.home_team.name)}</div><div class="${hw?'losedim':'win'}">${esc(m.away_team.name)}</div></div>${right}</div><div class="lu" id="lu${m.id}" hidden></div>`;
+      const live=m.status==='live',fin=m.status==='finished';
+      const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const right=m.score
+        ?`<div class="right"><div class="score">${m.score}</div><div class="st${live?' live':''}">${live?(m.minute?m.minute+"'":'LIVE'):'FT'}</div></div>`
+        :`<div class="right"><div class="ko">${ko}</div><div class="st${m.lineup.confirmed?'':' predlab'}">${m.lineup.confirmed?'XI CONFIRMED':'PREDICTED XI'}</div></div>`;
+      return `<div class="m" data-id="${m.id}"><div class="teams"><div class="win">${esc(m.home)}</div><div class="win">${esc(m.away)}</div></div>${right}</div><div class="lu" id="lu${m.id}" hidden></div>`;
     }).join('')}</div></div>`;
   }).join('');
-  document.querySelectorAll('.m[data-id]').forEach(el=>el.onclick=()=>lineups(el.dataset.id));
+  document.querySelectorAll('.m[data-id]').forEach(el=>el.onclick=()=>toggle(el.dataset.id));
 }
 
-async function lineups(id){
+function toggle(id){
   const box=$('lu'+id);
   if(!box.hidden){box.hidden=true;return;}
   document.querySelectorAll('.lu').forEach(x=>x.hidden=true);
+  const m=data.find(x=>x.id===id);
+  const side=s=>`<div class="luside"><div class="luhead">${esc(s.name)}${s.formation?' \u00b7 '+esc(s.formation):''}</div>${s.xi.map(p=>`<div class="lup">${p.n!=null?p.n+' ':''}${esc(p.name)}</div>`).join('')}</div>`;
+  const label=m.lineup.type==='predicted'?'PREDICTED XI \u2014 team sheet not announced yet':m.lineup.confirmed?'CONFIRMED TEAM SHEET':'TEAM SHEET';
+  box.innerHTML=`<div class="lusub ${m.lineup.type==='predicted'?'pred':''}">${label}</div><div class="lugrid">${side(m.lineup.home)}${side(m.lineup.away)}</div>`;
   box.hidden=false;
-  if(luCache[id]){box.innerHTML=luCache[id];return;}
-  box.innerHTML='<div class="lusub">Fetching team sheets…</div>';
-  try{
-    const j=await api('/football/matches/'+id+'/lineups');
-    const d=j.data;
-    const side=s=>`<div class="luside"><div class="luhead">${esc(s.name)}${s.formation?' · '+esc(s.formation):''}</div>${(s.starting_xi||[]).map(p=>`<div class="lup">${p.jersey_number!=null?p.jersey_number+' ':''}${esc(p.name)}</div>`).join('')}</div>`;
-    const label=d.type==='predicted'?'PREDICTED XI — team sheet not announced yet':d.confirmed?'CONFIRMED team sheet':'TEAM SHEET';
-    box.innerHTML=`<div class="lusub ${d.type==='predicted'?'pred':''}">${label}</div><div class="lugrid">${side(d.home)}${side(d.away)}</div>`;
-    luCache[id]=box.innerHTML;
-  }catch(e){box.innerHTML='<div class="lusub">No lineup available for this one yet — check back nearer kickoff.</div>';}
 }
-
-(async()=>{try{await loadComps();await load();}catch(e){$('list').innerHTML=`<div class="err">${esc(e.message)}</div>`;}})();
+load();
 </script>
 </body>
 </html>
