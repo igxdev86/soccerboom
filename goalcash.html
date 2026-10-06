@@ -32,6 +32,7 @@ h2{font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:.12
 .reveal .won{font-size:.75rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
 .reveal .cash{font-size:2.6rem;font-weight:700;color:var(--grn);line-height:1.1;margin:6px 0}
 .reveal .cash.zero{color:var(--dim);font-size:1.5rem}
+.evtag{color:var(--grn);font-weight:700}
 .reveal .player{font-size:1.35rem;font-weight:700;margin-top:8px}
 .reveal .pg{display:inline-block;margin-top:8px;background:var(--grn);color:#fff;border-radius:999px;padding:7px 16px;font-weight:700;font-size:.9rem}
 .reveal .pg.wait{background:var(--hair);color:var(--txt)}
@@ -90,7 +91,7 @@ input::placeholder{color:var(--dim)}
     <div id="favres"></div>
   </div>
 
-  <div class="small">Every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — position decides your per-goal rate: GK £250, DEF £25, MID £5, FWD £2. Goals settle automatically from the official match timeline.<br><br>
+  <div class="small">Every £1 ticket pays an instant cash prize (or not — most don't, that's the game) and enters you into a randomly allocated fixture from the next 72 hours of trackable football. Your player is allocated at random from the confirmed starting XIs the moment the official team sheet drops (≈1h before kickoff) — every ticket wins cash (4p minimum), and your player's match events multiply that win: goal ×10, yellow card ×3, red card ×20, all cumulative. Settled automatically from the official match timeline.<br><br>
   <b style="color:var(--txt)">Play for free by post</b> — identical draw, same prizes, no purchase needed.<br>
   <a href="/goalcash-howto.html">How to play</a> · <a href="/goalcash-rules.html">Terms &amp; free entry</a> · <a href="/goalcash-privacy.html">Privacy</a> · 18+ · GB residents · <a href="https://www.begambleaware.org">BeGambleAware.org</a></div>
 </div>
@@ -185,13 +186,14 @@ $('buy').onclick=async()=>{
     const t=j.ticket;
     if(j.balance_pence!=null)$('topAcct').textContent=fmt(j.balance_pence);
     $('reveal').innerHTML=`<div class="card reveal">
-      <div class="won">${t.cash_pence?'GREAT! YOU\u2019VE WON':'NO INSTANT WIN \u2014 BUT YOU\u2019RE IN THE GAME'}</div>
-      <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'\u00a30 instant'}</div>
+      <div class="won">${t.cash_pence>=100?'GREAT! YOU\u2019VE WON':'YOU\u2019VE WON'}</div>
+      <div class="cash ${t.cash_pence?'':'zero'}">${fmt(t.cash_pence)}</div>
       ${t.player_name?`<div class="player">${esc(t.player_name)}</div>
       <div class="fx">${esc(t.team_name)} \u00b7 ${esc(t.fixture)}</div>
-      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL</div>`
+      <div class="pg">GOAL ×10 · YELLOW ×3 · RED ×20 your win</div>`
       :`<div class="player">${esc(t.fixture)}</div>
       <div class="pg wait">PLAYER ALLOCATED WHEN THE TEAM SHEET DROPS</div>
+      <div class="fx">Goal ×10 · Yellow ×3 · Red ×20 your instant win.</div>
       <div class="fx">Your random player comes from the confirmed XIs \u2014 usually \u22481 hour before kickoff. Check back.</div>`}
       <div class="fx">${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT kickoff</div>
     </div>`;
@@ -208,7 +210,7 @@ async function load(){
     if(!j.tickets||!j.tickets.length){$('tickets').innerHTML='<div class="note">No tickets yet.</div>';return;}
     $('tickets').innerHTML=j.tickets.map(t=>`<div class="t">
       <div class="l1"><span>${t.player_name?esc(t.player_name)+' <span style="color:var(--dim)">('+esc(t.position)+')</span>':'<span style="color:var(--dim)">Awaiting team sheet</span>'}</span>
-      <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.goals?'<span class="bonus">'+t.goals+' goal'+(t.goals>1?'s':'')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">0 goals</span>'):'<span style="color:var(--dim)">open</span>'}</span></div>
+      <span>${t.cash_pence?fmt(t.cash_pence):''} ${t.settled?(t.bonus_pence?'<span class="bonus">'+[t.goals?t.goals+'g':'',t.cards?t.cards+'yc':'',t.reds?t.reds+'rc':''].filter(Boolean).join(' ')+' +'+fmt(t.bonus_pence)+'</span>':'<span style="color:var(--dim)">no events</span>'):'<span style="color:var(--dim)">open</span>'}</span></div>
       <div class="l2">${esc(t.fixture)} \u00b7 ${gmtD(t.kickoff)} ${gmtT(t.kickoff)} GMT${t.player_name?' \u00b7 '+fmt(t.per_goal_pence)+'/goal':''}</div>
     </div>`).join('');
   }catch(e){}
