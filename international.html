@@ -56,6 +56,13 @@ header{padding:18px 0 12px;border-bottom:3px solid var(--ink)}
 </div>
 <script>
 "use strict";
+const ISO={'England':'gb-eng','Scotland':'gb-sct','Wales':'gb-wls','Ireland':'ie','Republic of Ireland':'ie','France':'fr','Germany':'de','Spain':'es','Italy':'it','Portugal':'pt','Netherlands':'nl','Belgium':'be','Denmark':'dk','Norway':'no','Sweden':'se','Finland':'fi','Iceland':'is','Switzerland':'ch','Austria':'at','Poland':'pl','Czechia':'cz','Czech Republic':'cz','Slovakia':'sk','Slovenia':'si','Croatia':'hr','Serbia':'rs','Bosnia and Herzegovina':'ba','Montenegro':'me','North Macedonia':'mk','Albania':'al','Greece':'gr','Turkey':'tr','Ukraine':'ua','Romania':'ro','Bulgaria':'bg','Hungary':'hu','Georgia':'ge','Armenia':'am','Azerbaijan':'az','Israel':'il','Kosovo':'xk','Moldova':'md','Lithuania':'lt','Latvia':'lv','Estonia':'ee','Luxembourg':'lu','Malta':'mt','Cyprus':'cy','Faroe Islands':'fo','Gibraltar':'gi','Andorra':'ad','San Marino':'sm','Liechtenstein':'li','Kazakhstan':'kz','Brazil':'br','Argentina':'ar','Uruguay':'uy','Chile':'cl','Colombia':'co','Peru':'pe','Ecuador':'ec','Paraguay':'py','Bolivia':'bo','Venezuela':'ve','USA':'us','United States':'us','Mexico':'mx','Canada':'ca','Japan':'jp','South Korea':'kr','China':'cn','Australia':'au','New Zealand':'nz','Saudi Arabia':'sa','Qatar':'qa','Morocco':'ma','Algeria':'dz','Tunisia':'tn','Egypt':'eg','Senegal':'sn','Nigeria':'ng','Ghana':'gh','Cameroon':'cm','Ivory Coast':'ci','Mali':'ml','South Africa':'za'};
+function flag(n){const iso=ISO[n];if(!iso)return '';
+  if(iso.startsWith('gb-')){return {'gb-eng':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f','gb-sct':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f','gb-wls':'\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc77\udb40\udc6c\udb40\udc73\udb40\udc7f'}[iso]||'';}
+  if(iso==='xk')return '\ud83c\uddfd\ud83c\uddf0';
+  return String.fromCodePoint(...[...iso.toUpperCase()].map(c=>0x1F1A5+c.charCodeAt(0)));}
+const wf=n=>{const f=flag(n);return f?f+' ':'';};
+
 const $=id=>document.getElementById(id);
 let day=new Date(),data=[];
 const fmt=d=>d.toISOString().slice(0,10);
@@ -77,7 +84,7 @@ async function load(){
       if(m.competition!==lastComp){html+=`<div class="comphead">${esc(m.competition)}</div>`;lastComp=m.competition;}
       const ko=new Date(m.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})+' GMT';
       const mid=m.result?`<div class="mid${m.status==='live'?'" style="background:var(--bulb);color:var(--ink)':''}">${m.result}</div>`:`<div class="mid sched">${ko}</div>`;
-      html+=`<div class="match" data-i="${i}"><div class="row"><div class="team h">${esc(m.home)}</div>${mid}<div class="team">${esc(m.away)}</div></div><div class="study" id="st${i}" hidden></div></div>`;
+      html+=`<div class="match" data-i="${i}"><div class="row"><div class="team h">${esc(m.home)} ${wf(m.home)}</div>${mid}<div class="team">${wf(m.away)}${esc(m.away)}</div></div><div class="study" id="st${i}" hidden></div></div>`;
     });
     el.innerHTML=html+'<div class="small">Tap a game to study it: last 15 matches each (blowouts capped, thin samples shrunk toward the mean, low-score correlation adjusted), head-to-head, full squad with ages, clubs and club-season form per key player, injuries, and Bet365 prices where available. Squad quality nudges the model by a few percent at most \u2014 the workings are shown. Yellow tag = model chance beats the price by 5%+.</div>';
     el.querySelectorAll('.match').forEach(mm=>mm.onclick=()=>study(+mm.dataset.i));
