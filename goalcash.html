@@ -142,11 +142,13 @@ $('buy').onclick=async()=>{
     const t=j.ticket;
     $('reveal').innerHTML=`<div class="card reveal">
       <div class="won">${t.cash_pence?'GREAT! YOU\u2019VE WON':'NO INSTANT WIN \u2014 BUT YOU\u2019RE IN THE GAME'}</div>
-      <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'£0 instant'}</div>
-      <div class="player">${esc(t.player_name)}</div>
+      <div class="cash ${t.cash_pence?'':'zero'}">${t.cash_pence?fmt(t.cash_pence):'\u00a30 instant'}</div>
+      ${t.player_name?`<div class="player">${esc(t.player_name)}</div>
       <div class="fx">${esc(t.team_name)} \u00b7 ${esc(t.fixture)}</div>
-      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL TONIGHT</div>
-      <div class="fx">${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT kickoff</div>
+      <div class="pg">${fmt(t.per_goal_pence)} PER GOAL</div>`:`<div class="player">${esc(t.fixture)}</div>
+      <div class="pg" style="background:var(--hair);color:var(--txt)">PLAYER ALLOCATED WHEN THE TEAM SHEET DROPS</div>
+      <div class="fx">Your random player comes from the confirmed XIs \u2014 usually \u22481 hour before kickoff. Check back.</div>`}
+      <div class="fx">${new Date(t.kickoff).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'GMT'})} ${new Date(t.kickoff).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'GMT'})} GMT kickoff</div>
     </div>`;
     load();
   }catch(e){$('reveal').innerHTML=`<div class="err">${esc(e.message)}</div>`;}
