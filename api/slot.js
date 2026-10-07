@@ -77,13 +77,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ balance_pence: w[0] ? w[0].balance_pence : null });
     }
     if (action === 'topup') {
+      if (!user) return res.status(400).json({ error: 'no user' });
+      res.setHeader('Cache-Control', 'no-store');
       await fetch(SB + '/rest/v1/gc_wallet', { method: 'POST', headers: { ...sbH, Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ user_key: user, balance_pence: 0 }) });
       const w0 = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
       const cur = w0[0] ? w0[0].balance_pence : 0;
       if (cur >= 2000) return res.status(200).json({ error: 'Balance must be under \u00a320 to top up', balance_pence: cur });
-      await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH, body: JSON.stringify({ p_user: user, p_amount: 10000, p_reason: 'demo_topup' }) });
-      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
-      return res.status(200).json({ balance_pence: w[0] ? w[0].balance_pence : 0 });
+      const pr = await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}`, { method: 'PATCH', headers: { ...sbH, Prefer: 'return=representation' }, body: JSON.stringify({ balance_pence: cur + 10000 }) });
+      const pj = await pr.json().catch(() => null);
+      if (!pr.ok || !pj || !pj[0]) return res.status(500).json({ error: 'topup failed: ' + JSON.stringify(pj) });
+      await fetch(SB + '/rest/v1/gc_ledger', { method: 'POST', headers: sbH, body: JSON.stringify({ user_key: user, delta_pence: 10000, reason: 'demo_topup' }) });
+      return res.status(200).json({ balance_pence: pj[0].balance_pence });
     }
     if (action === 'state') {
       const r = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=spins,won_pence`, { headers: sbH })).json();
