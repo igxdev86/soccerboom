@@ -222,7 +222,11 @@ async function bonusRound(mult){
   st.classList.remove('on');
   function overlayInStage(){const d=document.createElement('div');d.className='btitle';d.style.marginTop='10px';d.textContent=mult>=100?'SUGAR MAX!':'SWEET!';el('bstage').appendChild(d);setTimeout(()=>d.remove(),1600);}
 }
-document.querySelectorAll('.meter')[0].onclick=()=>{prompt('Your device key (showkey)',uk);};
+document.querySelectorAll('.meter')[0].onclick=async()=>{
+  const j=await (await fetch('/api/slot?action=topup&user='+uk)).json();
+  if(j.error){el('msg').textContent=j.error;}else{el('msg').textContent='TOPPED UP \u00b7 demo credit';}
+  if(j.balance_pence!=null){won=j.balance_pence;meters();}
+};
 el('spin').onclick=async()=>{
   if(spinning)return;
   spinning=true;meters();el('winv').textContent=fmt(0);el('msg').textContent='';
