@@ -76,6 +76,15 @@ module.exports = async (req, res) => {
       const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
       return res.status(200).json({ balance_pence: w[0] ? w[0].balance_pence : null });
     }
+    if (action === 'topup') {
+      await fetch(SB + '/rest/v1/gc_wallet', { method: 'POST', headers: { ...sbH, Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ user_key: user, balance_pence: 0 }) });
+      const w0 = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
+      const cur = w0[0] ? w0[0].balance_pence : 0;
+      if (cur >= 2000) return res.status(200).json({ error: 'Balance must be under \u00a320 to top up', balance_pence: cur });
+      await fetch(SB + '/rest/v1/rpc/gc_credit', { method: 'POST', headers: sbH, body: JSON.stringify({ p_user: user, p_amount: 10000, p_reason: 'demo_topup' }) });
+      const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
+      return res.status(200).json({ balance_pence: w[0] ? w[0].balance_pence : 0 });
+    }
     if (action === 'state') {
       const r = await (await fetch(SB + `/rest/v1/gc_spins?user_key=eq.${encodeURIComponent(user)}&select=spins,won_pence`, { headers: sbH })).json();
       const w = await (await fetch(SB + `/rest/v1/gc_wallet?user_key=eq.${encodeURIComponent(user)}&select=balance_pence`, { headers: sbH })).json();
