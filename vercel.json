@@ -1,10 +1,23 @@
 {
   "crons": [
-    { "path": "/api/sync", "schedule": "0 4 * * *" },
-    { "path": "/api/oddsync", "schedule": "0 5 * * *" }
+    {
+      "path": "/api/sync",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/oddsync",
+      "schedule": "0 5 * * *"
+    }
   ],
   "functions": {
-    "api/sync.js": { "maxDuration": 60 },
-    "api/backtest.js": { "maxDuration": 60 }
+    "api/sync.js": {
+      "maxDuration": 60
+    },
+    "api/backtest.js": {
+      "maxDuration": 60
+    },
+    "api/pool.js": {
+      "maxDuration": 60
+    }
   }
 }
