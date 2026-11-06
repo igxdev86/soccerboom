@@ -195,7 +195,7 @@ function render(legs,R){
     $("#tLegs").textContent="–";$("#tOdds").textContent="–";$("#tRet").textContent="–";$("#legCount").textContent="";$("#slipNote").textContent="";slip.scrollIntoView({behavior:"smooth"});return; }
   legs.sort((a,b)=>a.ko<b.ko?-1:1);
   const odds=legs.reduce((p,l)=>p*l.price,1);
-  $("#legs").innerHTML=legs.map(l=>`<div class="leg"><div><div class="m">${l.home} v ${l.away} · ${l.market}</div><div class="p">${l.pick}</div><div class="ko">${fmtKo(l.ko)}</div></div><div class="odds">${l.price.toFixed(2)}<small>${frac(l.price)}</small></div></div>`).join("");
+  $("#legs").innerHTML=legs.map(l=>`<div class="leg"><div><div class="m">${l.comp?l.comp+" · ":""}${l.market}</div><div class="p">${l.home} v ${l.away}</div><div class="p" style="color:var(--acc)">${l.pick}</div><div class="ko">${fmtKo(l.ko)}</div></div><div class="odds">${l.price.toFixed(2)}<small>${frac(l.price)}</small></div></div>`).join("");
   $("#tLegs").textContent=legs.length; $("#tOdds").textContent=odds.toFixed(2); $("#tRet").textContent="£"+(stake*odds).toFixed(2);
   $("#legCount").textContent={low:"Low risk",mid:"Medium risk",high:"High risk"}[risk];
   $("#slipTitle").textContent=legs.length===1?"Your single":legs.length===2?"Your double":legs.length+"-fold";

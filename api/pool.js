@@ -12,15 +12,30 @@ module.exports = async (req, res) => {
   const days = Math.min(parseInt(req.query.days || "3", 10), 7);
   const d0 = new Date(), d1 = new Date(Date.now() + days * 864e5);
   const iso = d => d.toISOString().slice(0, 10);
-  const m = await tsa(`/football/matches?status=scheduled&sort=utc_date&date_from=${iso(d0)}&date_to=${iso(d1)}&per_page=100`);
-  const matches = (m && m.data || []).filter(x => x.odds_available).slice(0, 40);
+  // competitions: UK + top European leagues/cups
+  const OK = ["England","Scotland","Wales","Northern Ireland","Spain","Germany","Italy","France","Netherlands","Portugal","Europe"];
+  const names = {};
+  for (let p = 1; p <= 3; p++) {
+    const r = await tsa(`/football/competitions?per_page=100&page=${p}`);
+    if (!r || !r.data) break;
+    r.data.forEach(c => { if (OK.includes(c.country || "")) names[c.id] = (c.country ? c.country + " " : "") + c.name; });
+    if (r.meta && p >= r.meta.total_pages) break;
+  }
+  let all = [];
+  for (let p = 1; p <= 5; p++) {
+    const m = await tsa(`/football/matches?status=scheduled&sort=utc_date&date_from=${iso(d0)}&date_to=${iso(d1)}&per_page=100&page=${p}`);
+    if (!m || !m.data) break;
+    all = all.concat(m.data);
+    if (m.meta && p >= m.meta.total_pages) break;
+  }
+  const matches = all.filter(x => x.odds_available && names[x.competition_id]).slice(0, 60);
   const pool = [];
   await Promise.all(matches.map(async mt => {
     const o = await tsa(`/football/matches/${mt.id}/odds?bookmaker=bet365`);
     const bk = o && o.data && o.data.bookmakers && o.data.bookmakers[0];
     if (!bk) return;
     const mk = bk.markets || {};
-    const base = { match: mt.id, home: mt.home_team.name, away: mt.away_team.name, ko: mt.utc_date, comp: mt.competition_id };
+    const base = { match: mt.id, home: mt.home_team.name, away: mt.away_team.name, ko: mt.utc_date, comp: names[mt.competition_id] };
     const px = v => v && parseFloat(v.last_seen || v.opening);
     if (mk.match_odds) {
       pool.push({ ...base, market: "Match result", pick: mt.home_team.name, price: px(mk.match_odds.home) });
