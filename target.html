@@ -4,214 +4,147 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>TARGET — tell us what you want to win</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0f0c;--panel:#131a15;--panel2:#1b241d;--line:#28352c;--fg:#f1f5ee;--muted:#8d9b90;--acc:#b6ff3b;--acc-ink:#0c1500;--low:#3ddc84;--mid:#ffc43d;--high:#ff4d5e;
---display:"Barlow Condensed",Impact,sans-serif;--body:"Barlow",Arial,sans-serif;--mono:"JetBrains Mono",monospace}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);-webkit-font-smoothing:antialiased}
-body{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
-.wrap{max-width:560px;margin:0 auto;padding:0 16px}
-header{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px}
-.logo{font-family:var(--display);font-weight:900;font-size:28px;letter-spacing:.04em;color:var(--acc)}
-.logo span{color:var(--fg)}
-.badge{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 9px}
-.badge.live{color:var(--low);border-color:var(--low)}
-h1{font-family:var(--display);font-weight:900;font-size:44px;line-height:.95;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.01em}
+:root{--bg:#0b0f0c;--panel:#141b16;--panel2:#1c2520;--line:#2a3730;--fg:#f1f5ee;--muted:#8d9b90;--acc:#b6ff3b;--ink:#0c1500;--low:#3ddc84;--mid:#ffc43d;--high:#ff4d5e;
+--d:"Barlow Condensed",Impact,sans-serif;--b:"Barlow",Arial,sans-serif;--m:"JetBrains Mono",monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b)}
+.wrap{max-width:480px;margin:0 auto;padding:0 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{font-family:var(--d);font-weight:900;font-size:26px;letter-spacing:.04em;color:var(--acc)}.logo span{color:var(--fg)}
+.src{font-family:var(--m);font-size:11px;color:var(--muted)}.src.live{color:var(--low)}
+h1{font-family:var(--d);font-weight:900;font-size:40px;line-height:.95;margin:10px 0 18px;text-transform:uppercase}
 h1 em{font-style:normal;color:var(--acc)}
-.sub{color:var(--muted);margin:0 0 20px;font-size:15px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
-.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.money{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:8px 14px}
-.money b{font-family:var(--display);font-size:38px;color:var(--muted)}
-.money input{flex:1;background:none;border:0;color:var(--fg);font-family:var(--display);font-weight:900;font-size:48px;min-width:0;outline:none;padding:0}
-.money.small b,.money.small input{font-size:30px}
-.money.small input{height:40px}
-.row{display:flex;gap:10px}
-.row>*{flex:1}
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.chip{background:none;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:7px 14px;font:600 14px var(--body)}
-.chip:active{background:var(--panel2)}
-.need{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;font-size:14px;color:var(--muted)}
-.need b{font-family:var(--mono);color:var(--fg);font-size:16px}
-.risk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.risk button{background:var(--panel2);border:2px solid var(--line);border-radius:14px;padding:12px 8px;color:var(--fg);text-align:left;font-family:var(--body);cursor:pointer}
-.risk button strong{display:block;font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
-.risk button small{display:block;color:var(--muted);font-size:12px;line-height:1.3;margin-top:4px}
-.risk button[data-r="low"].on{border-color:var(--low)} .risk button[data-r="low"] strong{color:var(--low)}
-.risk button[data-r="mid"].on{border-color:var(--mid)} .risk button[data-r="mid"] strong{color:var(--mid)}
-.risk button[data-r="high"].on{border-color:var(--high)} .risk button[data-r="high"] strong{color:var(--high)}
-.cta{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
-.cta button{width:100%;max-width:528px;margin:0 auto;display:block;background:var(--acc);color:var(--acc-ink);border:0;border-radius:16px;padding:18px;font-family:var(--display);font-weight:900;font-size:26px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
-.cta button:disabled{opacity:.5}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.field{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.field label{font-weight:600;font-size:15px;color:var(--muted)}
+.amt{display:flex;align-items:baseline;gap:2px}
+.amt b{font-family:var(--d);font-size:28px;color:var(--muted)}
+.amt input{width:120px;background:none;border:0;color:var(--fg);font-family:var(--d);font-weight:900;font-size:40px;text-align:right;outline:none;padding:0}
+.chips{display:flex;gap:6px;padding:0 16px 14px;border-bottom:1px solid var(--line)}
+.chips button{flex:1;background:var(--panel2);border:0;color:var(--fg);border-radius:10px;padding:9px 0;font:600 14px var(--b)}
+.chips button.on{background:var(--acc);color:var(--ink)}
+.odds{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:14px;color:var(--muted)}
+.odds b{font-family:var(--m);color:var(--fg);font-size:15px}
+.risk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.risk button{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px 10px;color:var(--fg);text-align:left;font-family:var(--b)}
+.risk strong{display:block;font-family:var(--d);font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.risk small{display:block;color:var(--muted);font-size:12px;line-height:1.3;margin-top:3px}
+.risk [data-r=low] strong{color:var(--low)}.risk [data-r=mid] strong{color:var(--mid)}.risk [data-r=high] strong{color:var(--high)}
+.risk [data-r=low].on{border-color:var(--low)}.risk [data-r=mid].on{border-color:var(--mid)}.risk [data-r=high].on{border-color:var(--high)}
+.go{width:100%;background:var(--acc);color:var(--ink);border:0;border-radius:16px;padding:18px;font-family:var(--d);font-weight:900;font-size:26px;letter-spacing:.05em;text-transform:uppercase}
+.go:disabled{opacity:.4}
 /* slip */
-.slip{display:none}
-.slip.show{display:block}
-.slipHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.slipHead h2{font-family:var(--display);font-size:26px;margin:0;text-transform:uppercase;letter-spacing:.03em}
-.leg{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
-.leg:first-of-type{border-top:0}
-.leg .m{font-size:13px;color:var(--muted)}
-.leg .p{font-weight:700;font-size:16px}
-.leg .ko{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
-.odds{font-family:var(--mono);font-weight:700;font-size:16px;white-space:nowrap;text-align:right}
-.odds small{display:block;font-size:11px;color:var(--muted);font-weight:500}
-.total{border-top:2px solid var(--line);margin-top:6px;padding-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center}
-.total div{background:var(--panel2);border-radius:12px;padding:10px 6px}
-.total .lbl{margin-bottom:4px}
-.total b{font-family:var(--display);font-size:28px}
-.total .ret b{color:var(--acc)}
-.actions{display:flex;gap:8px;margin-top:12px}
-.actions button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:12px;font:700 15px var(--body);cursor:pointer}
-.actions .go{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5}
-.err{color:var(--high);font-size:14px;padding:8px 0}
-footer{color:var(--muted);font-size:11px;text-align:center;padding:30px 0 0;line-height:1.6}
+#slip{display:none;margin-top:14px}
+#slip.show{display:block}
+.sh{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.sh h2{font-family:var(--d);font-size:24px;margin:0;text-transform:uppercase}
+.sh span{font-family:var(--m);font-size:11px;color:var(--muted)}
+.leg{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.leg .c{font-family:var(--m);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.leg .t{font-weight:600;font-size:14px;margin:2px 0}
+.leg .p{color:var(--acc);font-weight:700;font-size:16px}
+.leg .o{font-family:var(--m);font-weight:600;font-size:16px;text-align:right;white-space:nowrap}
+.leg .o small{display:block;font-size:11px;color:var(--muted)}
+.tot{display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:14px 8px}
+.tot small{display:block;font-family:var(--m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tot b{font-family:var(--d);font-size:30px}
+.tot .r b{color:var(--acc)}
+.acts{display:flex;gap:8px;padding:0 16px 16px}
+.acts button{flex:1;border-radius:12px;padding:13px;font:700 15px var(--b);border:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+.acts .place{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.err{padding:16px;color:var(--high);font-size:14px;line-height:1.4}
+.reset{display:block;width:100%;margin-top:14px;background:none;border:1px solid var(--line);color:var(--muted);border-radius:12px;padding:12px;font:600 14px var(--b)}
+footer{color:var(--muted);font-size:11px;text-align:center;padding-top:24px;line-height:1.6}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header><div class="logo">TARGET<span>.bet</span></div><div class="badge" id="src">loading prices…</div></header>
-
+<header><div class="logo">TARGET<span>.bet</span></div><div class="src" id="src">loading prices…</div></header>
 <h1>Tell us what<br>you want to <em>win</em>.</h1>
-<p class="sub">Pick a target, pick a stake, pick your risk. We search every priced fixture and build the bet.</p>
 
-<div class="card">
-  <div class="row">
-    <div>
-      <div class="lbl">I want to win</div>
-      <div class="money"><b>£</b><input id="win" type="number" inputmode="decimal" value="10" min="1"></div>
-      <div class="chips"><button class="chip" data-w="10">£10</button><button class="chip" data-w="50">£50</button><button class="chip" data-w="100">£100</button><button class="chip" data-w="500">£500</button><button class="chip" data-w="1000">£1k</button></div>
-    </div>
-  </div>
-  <div class="row" style="margin-top:14px">
-    <div>
-      <div class="lbl">Stake</div>
-      <div class="money small"><b>£</b><input id="stake" type="number" inputmode="decimal" value="1" min="0.1" step="0.1"></div>
-    </div>
-    <div>
-      <div class="lbl">Odds needed</div>
-      <div class="money small"><input id="needOdds" readonly value="10.00"></div>
-    </div>
-  </div>
-  <div class="need"><span>Target is <b id="needFrac">9/1</b> on your stake</span><span id="needTxt">£1 → £10</span></div>
+<div class="panel">
+  <div class="field"><label>I want to win</label><div class="amt"><b>£</b><input id="win" type="number" inputmode="decimal" value="10"></div></div>
+  <div class="chips"><button data-w="10">£10</button><button data-w="50">£50</button><button data-w="100">£100</button><button data-w="500">£500</button><button data-w="1000">£1k</button></div>
+  <div class="field"><label>Stake</label><div class="amt"><b>£</b><input id="stake" type="number" inputmode="decimal" value="1" step="0.5"></div></div>
+  <div class="odds"><span>Odds needed</span><b id="need">9/1 (10.00)</b></div>
 </div>
 
-<div class="card">
-  <div class="lbl">Risk</div>
-  <div class="risk">
-    <button data-r="low" class="on"><strong>Low</strong><small>Big acca of short-priced favourites. Many legs, each very likely.</small></button>
-    <button data-r="mid"><strong>Medium</strong><small>3–5 legs around evens to 3/1. Balanced.</small></button>
-    <button data-r="high"><strong>High</strong><small>One or two selections only. 10/1 shot, or 5/1 + evens.</small></button>
-  </div>
+<div class="risk">
+  <button data-r="low" class="on"><strong>Low</strong><small>Acca of short favourites</small></button>
+  <button data-r="mid"><strong>Medium</strong><small>3–5 legs, evens to 3/1</small></button>
+  <button data-r="high"><strong>High</strong><small>One or two picks</small></button>
 </div>
 
-<div class="card slip" id="slip">
-  <div class="slipHead"><h2 id="slipTitle">Your bet</h2><span class="badge" id="legCount"></span></div>
+<button class="go" id="build" disabled>Build my bet</button>
+
+<div class="panel" id="slip">
+  <div class="sh"><h2 id="st">Your bet</h2><span id="sr"></span></div>
   <div id="legs"></div>
-  <div class="total">
-    <div><div class="lbl">Legs</div><b id="tLegs">0</b></div>
-    <div><div class="lbl">Odds</div><b id="tOdds">0</b></div>
-    <div class="ret"><div class="lbl">Returns</div><b id="tRet">£0</b></div>
-  </div>
-  <div class="actions"><button id="again">Build another</button><button class="go" id="place">Place bet</button></div>
-  <div class="note" id="slipNote"></div>
+  <div class="tot"><div><small>Legs</small><b id="tl">0</b></div><div><small>Odds</small><b id="to">0</b></div><div class="r"><small>Returns</small><b id="tr">£0</b></div></div>
+  <div class="acts"><button id="again">Build another</button><button class="place" id="place">Place bet</button></div>
 </div>
 
-<footer>Concept. Prices Bet365 via TheStatsAPI, cached 10 min. 18+ · BeGambleAware.org</footer>
+<button class="reset" id="reset">Reset</button>
+<footer>Concept. Bet365 prices via TheStatsAPI. 18+ · BeGambleAware.org</footer>
 </div>
-
-<div class="cta"><button id="build" disabled>Build my bet</button></div>
 
 <script>
-const $=s=>document.querySelector(s);
-let POOL=[], DEMO=false, risk="low";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let POOL=[], risk="low";
+const DEF={win:"10",stake:"1",risk:"low"};
 
-// ---------- data ----------
-async function loadPool(){
-  try{
-    const r=await fetch("/api/pool?days=3"); if(!r.ok) throw 0;
-    const j=await r.json(); if(!j.pool||!j.pool.length) throw 0;
-    POOL=j.pool; $("#src").textContent=j.matches+" fixtures · live prices"; $("#src").classList.add("live");
-  }catch(e){ POOL=demoPool(); DEMO=true; $("#src").textContent="demo prices"; }
-  $("#build").disabled=false;
+async function load(){
+  try{ const j=await (await fetch("/api/pool?days=3")).json(); if(!j.pool||!j.pool.length) throw 0;
+    POOL=j.pool; $("#src").textContent=j.matches+" fixtures live"; $("#src").classList.add("live"); $("#build").disabled=false;
+  }catch(e){ $("#src").textContent="prices unavailable"; }
 }
-function demoPool(){
-  const T=[["Man City","Burnley",1.18,8,15],["Arsenal","Sunderland",1.25,6.5,12],["Liverpool","Wolves",1.3,5.5,10],["Chelsea","Everton",1.5,4.33,6.5],["Spurs","Brentford",1.9,3.6,4],["Newcastle","Fulham",1.7,3.8,5],["Aston Villa","Bournemouth",2.1,3.4,3.5],["Brighton","Crystal Palace",2.3,3.3,3.2],["Leeds","West Ham",2.4,3.3,3],["Nottm Forest","Man Utd",2.6,3.3,2.75],["Bayern","Augsburg",1.14,9,19],["PSG","Nantes",1.2,7,13],["Real Madrid","Getafe",1.28,5.5,11],["Barcelona","Alaves",1.22,6.5,13],["Inter","Lecce",1.33,5,9],["Juventus","Genoa",1.55,4,6],["Celtic","St Mirren",1.3,5,9],["Rangers","Dundee",1.44,4.5,7],["Cardiff","Swansea",2.5,3.2,2.9],["Wrexham","Oxford",2.0,3.5,3.75]];
-  const p=[]; T.forEach((t,i)=>{
-    const ko=new Date(Date.now()+ (6+i*5)*36e5).toISOString();
-    const base={match:"demo"+i,home:t[0],away:t[1],ko};
-    p.push({...base,market:"Match result",pick:t[0],price:t[2]},{...base,market:"Match result",pick:"Draw",price:t[3]},{...base,market:"Match result",pick:t[1],price:t[4]});
-    const dc=1/(1/t[2]+1/t[3]); p.push({...base,market:"Double chance",pick:t[0]+" or draw",price:+(dc*1.03).toFixed(2)});
-    p.push({...base,market:"BTTS",pick:"Yes",price:1.8+(i%4)*.1},{...base,market:"BTTS",pick:"No",price:1.9-(i%4)*.08});
-    p.push({...base,market:"Total goals",pick:"Over 1.5",price:1.2+(i%5)*.05},{...base,market:"Total goals",pick:"Over 2.5",price:1.7+(i%5)*.1},{...base,market:"Total goals",pick:"Under 3.5",price:1.45+(i%3)*.1},{...base,market:"Total goals",pick:"Over 0.5",price:1.06+(i%3)*.02});
-  }); return p;
-}
-
-// ---------- maths ----------
 const need=()=>Math.max(1.01,(+$("#win").value||0)/(+$("#stake").value||1));
-function frac(d){ const x=d-1; let best=[Math.round(x),1],err=9;
-  for(let den=1;den<=20;den++){const num=Math.round(x*den);const e=Math.abs(num/den-x);if(e<err-1e-9){err=e;best=[num,den]}}
-  const g=(a,b)=>b?g(b,a%b):a; const k=g(best[0],best[1])||1; return (best[0]/k)+"/"+(best[1]/k); }
+function frac(d){const x=d-1;let bn=Math.round(x),bd=1,e=9;for(let den=1;den<=20;den++){const n=Math.round(x*den),er=Math.abs(n/den-x);if(er<e-1e-9){e=er;bn=n;bd=den}}const g=(a,b)=>b?g(b,a%b):a;const k=g(bn,bd)||1;return bn/k+"/"+bd/k}
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-const onePerMatch=legs=>{const s=new Set();return legs.filter(l=>!s.has(l.match)&&s.add(l.match))};
+const one=l=>{const s=new Set();return l.filter(x=>!s.has(x.match)&&s.add(x.match))};
+const greedy=(c,R)=>{let p=1,o=[];for(const s of c){if(p>=R)break;o.push(s);p*=s.price}return p>=R?o:[]};
 
 function build(){
   const R=need(); let legs=[];
-  if(risk==="low"){
-    // shortest prices, one per match, greedy multiply until target
-    let c=onePerMatch(shuffle(POOL.filter(s=>s.price>=1.04&&s.price<=1.5)).sort((a,b)=>a.price-b.price));
-    let prod=1; for(const s of c){ if(prod>=R) break; legs.push(s); prod*=s.price; }
-    if(prod<R){ legs=[]; } // not enough short stuff
-  } else if(risk==="mid"){
-    let c=onePerMatch(shuffle(POOL.filter(s=>s.price>=1.7&&s.price<=4.2)));
-    let prod=1; for(const s of c){ if(prod>=R) break; legs.push(s); prod*=s.price; }
-    // trim last leg down if massively over target: swap for a shorter one
-    if(prod<R) legs=[];
-  } else {
-    // fewest legs: single in [R, R*1.5], else best pair, else triple
-    const c=onePerMatch(shuffle(POOL.filter(s=>s.price>=1.8)));
+  if(risk==="low") legs=greedy(one(shuffle(POOL.filter(s=>s.price>=1.04&&s.price<=1.5))).sort((a,b)=>a.price-b.price),R);
+  else if(risk==="mid") legs=greedy(one(shuffle(POOL.filter(s=>s.price>=1.7&&s.price<=4.2))),R);
+  else{
+    const c=one(shuffle(POOL.filter(s=>s.price>=1.8)));
     const single=c.filter(s=>s.price>=R&&s.price<=R*1.5).sort((a,b)=>a.price-b.price)[0];
     if(single) legs=[single];
-    else{
-      let best=null,bp=1e9;
-      for(let i=0;i<c.length;i++) for(let j=i+1;j<c.length;j++){
-        if(c[i].match===c[j].match) continue; const p=c[i].price*c[j].price;
-        if(p>=R&&p<bp){bp=p;best=[c[i],c[j]]} }
-      if(best) legs=best;
-      else{ for(let i=0;i<c.length&&!best;i++) for(let j=i+1;j<c.length&&!best;j++) for(let k=j+1;k<c.length;k++){
-          const ms=new Set([c[i].match,c[j].match,c[k].match]); if(ms.size<3) continue;
-          const p=c[i].price*c[j].price*c[k].price; if(p>=R&&p<bp){bp=p;best=[c[i],c[j],c[k]]} }
-        if(best) legs=best; }
-    }
+    else{ let best=null,bp=1e9;
+      for(let i=0;i<c.length;i++)for(let j=i+1;j<c.length;j++){if(c[i].match===c[j].match)continue;const p=c[i].price*c[j].price;if(p>=R&&p<bp){bp=p;best=[c[i],c[j]]}}
+      if(!best)for(let i=0;i<c.length;i++)for(let j=i+1;j<c.length;j++)for(let k=j+1;k<c.length;k++){if(new Set([c[i].match,c[j].match,c[k].match]).size<3)continue;const p=c[i].price*c[j].price*c[k].price;if(p>=R&&p<bp){bp=p;best=[c[i],c[j],c[k]]}}
+      if(best)legs=best; }
   }
-  render(legs,R);
+  render(legs);
 }
-
-function render(legs,R){
-  const stake=+$("#stake").value||0, slip=$("#slip"); slip.classList.add("show");
-  if(!legs.length){ $("#legs").innerHTML='<div class="err">Can\'t reach that target at this risk level with today\'s prices. Try a lower target, a bigger stake, or a higher risk.</div>';
-    $("#tLegs").textContent="–";$("#tOdds").textContent="–";$("#tRet").textContent="–";$("#legCount").textContent="";$("#slipNote").textContent="";slip.scrollIntoView({behavior:"smooth"});return; }
+function render(legs){
+  const stake=+$("#stake").value||0; $("#slip").classList.add("show");
+  $("#sr").textContent={low:"Low risk",mid:"Medium risk",high:"High risk"}[risk];
+  if(!legs.length){$("#legs").innerHTML='<div class="err">Can\'t hit that target at this risk with today\'s prices. Lower the target, raise the stake or go higher risk.</div>';$("#tl").textContent=$("#to").textContent=$("#tr").textContent="–";$("#st").textContent="No bet";return}
   legs.sort((a,b)=>a.ko<b.ko?-1:1);
   const odds=legs.reduce((p,l)=>p*l.price,1);
-  $("#legs").innerHTML=legs.map(l=>`<div class="leg"><div><div class="m">${l.comp?l.comp+" · ":""}${l.market}</div><div class="p">${l.home} v ${l.away}</div><div class="p" style="color:var(--acc)">${l.pick}</div><div class="ko">${fmtKo(l.ko)}</div></div><div class="odds">${l.price.toFixed(2)}<small>${frac(l.price)}</small></div></div>`).join("");
-  $("#tLegs").textContent=legs.length; $("#tOdds").textContent=odds.toFixed(2); $("#tRet").textContent="£"+(stake*odds).toFixed(2);
-  $("#legCount").textContent={low:"Low risk",mid:"Medium risk",high:"High risk"}[risk];
-  $("#slipTitle").textContent=legs.length===1?"Your single":legs.length===2?"Your double":legs.length+"-fold";
-  $("#slipNote").textContent=`£${stake} at ${frac(odds)} returns £${(stake*odds).toFixed(2)} (target £${$("#win").value}).`+(DEMO?" Demo prices — connect the API for live fixtures.":"");
-  slip.scrollIntoView({behavior:"smooth",block:"start"});
+  $("#legs").innerHTML=legs.map(l=>`<div class="leg"><div><div class="c">${l.comp||""} · ${l.market}</div><div class="t">${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${l.price.toFixed(2)}<small>${frac(l.price)} · ${new Date(l.ko).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}</small></div></div>`).join("");
+  $("#tl").textContent=legs.length;$("#to").textContent=odds.toFixed(2);$("#tr").textContent="£"+(stake*odds).toFixed(2);
+  $("#st").textContent=legs.length===1?"Single":legs.length===2?"Double":legs.length===3?"Treble":legs.length+"-fold";
+  $("#slip").scrollIntoView({behavior:"smooth",block:"start"});
 }
-const fmtKo=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"});
-
-// ---------- ui ----------
-function sync(){ const R=need(); $("#needOdds").value=R.toFixed(2); $("#needFrac").textContent=frac(R); $("#needTxt").textContent=`£${$("#stake").value} → £${$("#win").value}`; }
+function sync(){const R=need();$("#need").textContent=frac(R)+" ("+R.toFixed(2)+")";$$(".chips button").forEach(c=>c.classList.toggle("on",c.dataset.w===$("#win").value))}
+function reset(){
+  $("#win").value=DEF.win;$("#stake").value=DEF.stake;risk=DEF.risk;
+  $$(".risk button").forEach(b=>b.classList.toggle("on",b.dataset.r===risk));
+  $("#slip").classList.remove("show");$("#legs").innerHTML="";$("#tl").textContent=$("#to").textContent=$("#tr").textContent="";
+  sync();window.scrollTo({top:0,behavior:"smooth"});
+}
 $("#win").oninput=$("#stake").oninput=sync;
-document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{$("#win").value=c.dataset.w;sync()});
-document.querySelectorAll(".risk button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".risk button").forEach(x=>x.classList.remove("on"));b.classList.add("on");risk=b.dataset.r;if($("#slip").classList.contains("show"))build()});
-$("#build").onclick=build; $("#again").onclick=build;
-$("#place").onclick=()=>alert("Concept only — this would hand the slip to the sportsbook (TigerBet) with the legs pre-filled.");
-sync(); loadPool();
+$$(".chips button").forEach(c=>c.onclick=()=>{$("#win").value=c.dataset.w;sync()});
+$$(".risk button").forEach(b=>b.onclick=()=>{$$(".risk button").forEach(x=>x.classList.remove("on"));b.classList.add("on");risk=b.dataset.r;if($("#slip").classList.contains("show"))build()});
+$("#build").onclick=build;$("#again").onclick=build;$("#reset").onclick=reset;
+$("#place").onclick=()=>alert("Concept only — would hand the slip to the sportsbook pre-filled.");
+sync();load();
 </script>
 </body>
 </html>
