@@ -18,6 +18,9 @@
     },
     "api/pool.js": {
       "maxDuration": 60
+    },
+    "api/target-run.js": {
+      "maxDuration": 60
     }
   }
 }

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TARGET — bot feed</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f0c;--panel:#141b16;--panel2:#1c2520;--line:#2a3730;--fg:#f1f5ee;--muted:#8d9b90;--acc:#b6ff3b;--ink:#0c1500;--low:#3ddc84;--mid:#ffc43d;--high:#ff4d5e;
+--d:"Barlow Condensed",Impact,sans-serif;--b:"Barlow",Arial,sans-serif;--m:"JetBrains Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b)}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+header{display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{font-family:var(--d);font-weight:900;font-size:24px;letter-spacing:.04em;color:var(--acc)}.logo span{color:var(--fg)}
+.logo small{font-family:var(--m);font-size:10px;color:var(--muted);margin-left:8px;letter-spacing:.1em}
+.st{font-family:var(--m);font-size:11px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+.tile small{display:block;font-family:var(--m);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tile b{font-family:var(--d);font-size:24px}
+.pos{color:var(--low)}.neg{color:var(--high)}
+.tabs{display:flex;gap:6px;margin:10px 0}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:9px;font:700 13px var(--b)}
+.tabs button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.sec{display:none}.sec.on{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--m);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{text-align:right;padding:7px 4px;border-bottom:1px solid var(--line);font-family:var(--m);font-size:12px}
+th:first-child,td:first-child{text-align:left;font-family:var(--b);font-weight:700}
+.bet{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden}
+.bh{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer}
+.bh .who{font-weight:700;font-size:14px}.bh .who small{font-family:var(--m);font-size:10px;color:var(--muted);margin-left:6px}
+.bh .amt{font-family:var(--m);font-size:12px;color:var(--muted)}
+.tag{font-family:var(--m);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.low{color:var(--low);border-color:var(--low)}.tag.mid{color:var(--mid);border-color:var(--mid)}.tag.high{color:var(--high);border-color:var(--high)}
+.tag.won{background:var(--low);color:var(--ink);border-color:var(--low)}.tag.lost{background:var(--high);color:#fff;border-color:var(--high)}
+.legs{display:none;border-top:1px solid var(--line)}
+.bet.open .legs{display:block}
+.leg{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px}
+.leg:last-child{border-bottom:0}
+.leg .c{font-family:var(--m);font-size:10px;color:var(--muted)}
+.leg .p{color:var(--acc);font-weight:700}
+.leg .o{font-family:var(--m);white-space:nowrap}
+.leg.won .o{color:var(--low)}.leg.lost .o{color:var(--high)}.leg.void .o{color:var(--muted);text-decoration:line-through}
+.empty{color:var(--muted);text-align:center;padding:30px 0;font-size:14px}
+.row{display:flex;gap:6px;margin:6px 0 12px}
+.row button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px;font:600 13px var(--b)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="logo">TARGET<span>.bet</span><small>BOT LAB</small></div><div class="st" id="st">loading…</div></header>
+
+<div class="tiles">
+  <div class="tile"><small>Bets</small><b id="kN">–</b></div>
+  <div class="tile"><small>Win rate</small><b id="kW">–</b></div>
+  <div class="tile"><small>Staked</small><b id="kS">–</b></div>
+  <div class="tile"><small>Machine P/L</small><b id="kP">–</b></div>
+</div>
+
+<div class="tabs"><button class="on" data-t="feed">Feed</button><button data-t="settled">Settled</button><button data-t="machine">Machine</button><button data-t="bots">Bots</button></div>
+
+<div class="sec on" id="feed"></div>
+<div class="sec" id="settled"></div>
+<div class="sec" id="machine">
+  <table><thead><tr><th>Risk</th><th>Bets</th><th>Won</th><th>Open</th><th>Hit %</th><th>Avg legs</th><th>Staked</th><th>Returned</th><th>ROI</th></tr></thead><tbody id="mt"></tbody></table>
+  <p class="empty" id="mnote"></p>
+</div>
+<div class="sec" id="bots">
+  <table><thead><tr><th>Bot</th><th>Bets</th><th>Won</th><th>Staked</th><th>Returned</th><th>P/L</th></tr></thead><tbody id="bt"></tbody></table>
+</div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const £=n=>"£"+(+n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const when=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");document.querySelectorAll(".sec").forEach(s=>s.classList.toggle("on",s.id===b.dataset.t))});
+
+function betCard(b){
+  const legs=b.legs.map(l=>`<div class="leg ${l.result||""}"><div><div class="c">${l.comp||""} · ${l.market}</div><div>${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${(+l.price).toFixed(2)}<br><span class="c">${l.result||"open"}</span></div></div>`).join("");
+  const ret=b.status==="won"?`<span class="pos">+${£(b.returns-b.stake)}</span>`:b.status==="lost"?`<span class="neg">−${£(b.stake)}</span>`:`to win ${£(b.stake*b.odds)}`;
+  return `<div class="bet" onclick="this.classList.toggle('open')"><div class="bh"><div><div class="who">Bot ${String(b.bot).padStart(3,"0")}<small>${when(b.settled_at||b.placed_at)}</small></div><div class="amt">${£(b.stake)} → target ${£(b.target)} · ${b.legs.length} leg${b.legs.length>1?"s":""} @ ${(+b.odds).toFixed(2)}</div></div><div style="text-align:right"><span class="tag ${b.risk}">${b.risk}</span> <span class="tag ${b.status}">${b.status}</span><div class="amt" style="margin-top:4px">${ret}</div></div></div><div class="legs">${legs}</div></div>`;
+}
+function row(name,s){const hit=s.won+s.lost?Math.round(100*s.won/(s.won+s.lost)):0;const roi=s.staked?((s.returned-s.staked)/s.staked*100):0;
+  return `<tr><td>${name}</td><td>${s.n}</td><td>${s.won}</td><td>${s.open}</td><td>${hit}%</td><td>${s.n?(s.legs/s.n).toFixed(1):"–"}</td><td>${£(s.staked)}</td><td>${£(s.returned)}</td><td class="${roi>=0?"pos":"neg"}">${roi.toFixed(0)}%</td></tr>`}
+
+async function load(){
+  $("#st").textContent="settling…";
+  try{ const r=await (await fetch("/api/target-run")).json(); $("#st").textContent=(r.place?`placed ${r.place.placed} · `:"")+`settled ${r.settle.settled} · open ${r.settle.open}`; }catch(e){ $("#st").textContent="run failed"; }
+  const d=await (await fetch("/api/target-data")).json();
+  if(d.error){$("#feed").innerHTML='<p class="empty">'+JSON.stringify(d.error)+'</p>';return}
+  const a=d.stats.all, pl=a.returned-a.staked;
+  $("#kN").textContent=a.n; $("#kW").textContent=(a.won+a.lost)?Math.round(100*a.won/(a.won+a.lost))+"%":"–"; $("#kS").textContent=£(a.staked).replace(".00","");
+  $("#kP").textContent=(pl>=0?"+":"−")+£(Math.abs(pl)).replace(".00",""); $("#kP").className=pl>=0?"pos":"neg";
+  $("#feed").innerHTML=d.feed.filter(b=>b.status!=="nobet").map(betCard).join("")||'<p class="empty">No bets yet.</p>';
+  $("#settled").innerHTML=d.settled.map(betCard).join("")||'<p class="empty">Nothing settled yet.</p>';
+  $("#mt").innerHTML=["low","mid","high"].map(k=>row(k,d.stats[k])).join("")+row("All",a);
+  $("#mnote").textContent=`${d.total} rows · ${d.nobet} times the builder couldn't hit target. Machine P/L is the bookie's view inverted: bots up = house down.`;
+  $("#bt").innerHTML=d.bots.map(b=>`<tr><td>Bot ${String(b.bot).padStart(3,"0")}</td><td>${b.n}</td><td>${b.won}</td><td>${£(b.staked)}</td><td>${£(b.returned)}</td><td class="${b.pl>=0?"pos":"neg"}">${b.pl>=0?"+":""}${£(b.pl)}</td></tr>`).join("");
+}
+load();
+</script>
+</body>
+</html>
