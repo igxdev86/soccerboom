@@ -1,7 +1,7 @@
 // GET /api/target-data → feed + machine stats + bot leaderboard
 const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY;
 const sbH = { apikey: SK, Authorization: "Bearer " + SK };
-module.exports = async (req, res) => {
+module.exports = async (req, res) => { try {
   const all = await (await fetch(SB + "/rest/v1/target_bets?select=id,bot,day,target,stake,risk,legs,odds,status,returns,placed_at,settled_at&order=placed_at.desc&limit=5000", { headers: sbH })).json();
   if (!Array.isArray(all)) return res.status(500).json({ error: all });
   const bets = all.filter(b => b.status !== "nobet");
@@ -20,4 +20,4 @@ module.exports = async (req, res) => {
   const nobet = all.filter(b => b.status === "nobet").length;
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({ stats, bots: Object.values(bots).map(b => ({ ...b, pl: +(b.returned - b.staked).toFixed(2) })).sort((a, b) => b.pl - a.pl), feed, settled, nobet, total: all.length });
-};
+} catch (e) { res.status(200).json({ crashed: true, error: String(e && e.stack || e) }); } };

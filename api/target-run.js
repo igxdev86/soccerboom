@@ -56,7 +56,7 @@ async function place(day) {
   return { placed: rows.filter(x => x.status === "open").length, nobet: rows.filter(x => x.status === "nobet").length, matches, ok: r.ok, err: r.ok ? undefined : await r.text() };
 }
 
-module.exports = async (req, res) => {
+module.exports = async (req, res) => { try {
   const out = { settle: await settle() };
   const today = new Date().toISOString().slice(0, 10);
   const force = req.query.force && process.env.SYNC_SECRET && req.query.secret === process.env.SYNC_SECRET;
@@ -68,4 +68,4 @@ module.exports = async (req, res) => {
   }
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json(out);
-};
+} catch (e) { res.status(200).json({ crashed: true, error: String(e && e.stack || e) }); } };
