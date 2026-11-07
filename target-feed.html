@@ -74,17 +74,17 @@ th:first-child,td:first-child{text-align:left;font-family:var(--b);font-weight:7
 
 <script>
 const $=s=>document.querySelector(s);
-const £=n=>"£"+(+n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=n=>"£"+(+n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
 const when=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");document.querySelectorAll(".sec").forEach(s=>s.classList.toggle("on",s.id===b.dataset.t))});
 
 function betCard(b){
   const legs=b.legs.map(l=>`<div class="leg ${l.result||""}"><div><div class="c">${l.comp||""} · ${l.market}</div><div>${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${(+l.price).toFixed(2)}<br><span class="c">${l.result||"open"}</span></div></div>`).join("");
-  const ret=b.status==="won"?`<span class="pos">+${£(b.returns-b.stake)}</span>`:b.status==="lost"?`<span class="neg">−${£(b.stake)}</span>`:`to win ${£(b.stake*b.odds)}`;
-  return `<div class="bet" onclick="this.classList.toggle('open')"><div class="bh"><div><div class="who">Bot ${String(b.bot).padStart(3,"0")}<small>${when(b.settled_at||b.placed_at)}</small></div><div class="amt">${£(b.stake)} → target ${£(b.target)} · ${b.legs.length} leg${b.legs.length>1?"s":""} @ ${(+b.odds).toFixed(2)}</div></div><div style="text-align:right"><span class="tag ${b.risk}">${b.risk}</span> <span class="tag ${b.status}">${b.status}</span><div class="amt" style="margin-top:4px">${ret}</div></div></div><div class="legs">${legs}</div></div>`;
+  const ret=b.status==="won"?`<span class="pos">+${money(b.returns-b.stake)}</span>`:b.status==="lost"?`<span class="neg">−${money(b.stake)}</span>`:`to win ${money(b.stake*b.odds)}`;
+  return `<div class="bet" onclick="this.classList.toggle('open')"><div class="bh"><div><div class="who">Bot ${String(b.bot).padStart(3,"0")}<small>${when(b.settled_at||b.placed_at)}</small></div><div class="amt">${money(b.stake)} → target ${money(b.target)} · ${b.legs.length} leg${b.legs.length>1?"s":""} @ ${(+b.odds).toFixed(2)}</div></div><div style="text-align:right"><span class="tag ${b.risk}">${b.risk}</span> <span class="tag ${b.status}">${b.status}</span><div class="amt" style="margin-top:4px">${ret}</div></div></div><div class="legs">${legs}</div></div>`;
 }
 function row(name,s){const hit=s.won+s.lost?Math.round(100*s.won/(s.won+s.lost)):0;const roi=s.staked?((s.returned-s.staked)/s.staked*100):0;
-  return `<tr><td>${name}</td><td>${s.n}</td><td>${s.won}</td><td>${s.open}</td><td>${hit}%</td><td>${s.n?(s.legs/s.n).toFixed(1):"–"}</td><td>${£(s.staked)}</td><td>${£(s.returned)}</td><td class="${roi>=0?"pos":"neg"}">${roi.toFixed(0)}%</td></tr>`}
+  return `<tr><td>${name}</td><td>${s.n}</td><td>${s.won}</td><td>${s.open}</td><td>${hit}%</td><td>${s.n?(s.legs/s.n).toFixed(1):"–"}</td><td>${money(s.staked)}</td><td>${money(s.returned)}</td><td class="${roi>=0?"pos":"neg"}">${roi.toFixed(0)}%</td></tr>`}
 
 async function load(){
   $("#st").textContent="settling…";
@@ -92,13 +92,13 @@ async function load(){
   const d=await (await fetch("/api/target-data")).json();
   if(d.error){$("#feed").innerHTML='<p class="empty">'+JSON.stringify(d.error)+'</p>';return}
   const a=d.stats.all, pl=a.returned-a.staked;
-  $("#kN").textContent=a.n; $("#kW").textContent=(a.won+a.lost)?Math.round(100*a.won/(a.won+a.lost))+"%":"–"; $("#kS").textContent=£(a.staked).replace(".00","");
-  $("#kP").textContent=(pl>=0?"+":"−")+£(Math.abs(pl)).replace(".00",""); $("#kP").className=pl>=0?"pos":"neg";
+  $("#kN").textContent=a.n; $("#kW").textContent=(a.won+a.lost)?Math.round(100*a.won/(a.won+a.lost))+"%":"–"; $("#kS").textContent=money(a.staked).replace(".00","");
+  $("#kP").textContent=(pl>=0?"+":"−")+money(Math.abs(pl)).replace(".00",""); $("#kP").className=pl>=0?"pos":"neg";
   $("#feed").innerHTML=d.feed.filter(b=>b.status!=="nobet").map(betCard).join("")||'<p class="empty">No bets yet.</p>';
   $("#settled").innerHTML=d.settled.map(betCard).join("")||'<p class="empty">Nothing settled yet.</p>';
   $("#mt").innerHTML=["low","mid","high"].map(k=>row(k,d.stats[k])).join("")+row("All",a);
   $("#mnote").textContent=`${d.total} rows · ${d.nobet} times the builder couldn't hit target. Machine P/L is the bookie's view inverted: bots up = house down.`;
-  $("#bt").innerHTML=d.bots.map(b=>`<tr><td>Bot ${String(b.bot).padStart(3,"0")}</td><td>${b.n}</td><td>${b.won}</td><td>${£(b.staked)}</td><td>${£(b.returned)}</td><td class="${b.pl>=0?"pos":"neg"}">${b.pl>=0?"+":""}${£(b.pl)}</td></tr>`).join("");
+  $("#bt").innerHTML=d.bots.map(b=>`<tr><td>Bot ${String(b.bot).padStart(3,"0")}</td><td>${b.n}</td><td>${b.won}</td><td>${money(b.staked)}</td><td>${money(b.returned)}</td><td class="${b.pl>=0?"pos":"neg"}">${b.pl>=0?"+":""}${money(b.pl)}</td></tr>`).join("");
 }
 load();
 </script>
