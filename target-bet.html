@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TARGET — bet</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/target.css">
+</head>
+<body>
+<div class="wrap">
+<header><a class="logo" href="/target.html">TARGET<span>.bet</span></a><nav class="nav"><a href="/target.html">Build</a><a href="/target-feed.html">Feed</a></nav></header>
+<div id="app"><p class="empty">Loading bet…</p></div>
+<footer>18+ · BeGambleAware.org</footer>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const money=n=>"£"+(+n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const frac=d=>{const x=d-1;let bn=Math.round(x),bd=1,e=9;for(let den=1;den<=20;den++){const n=Math.round(x*den),er=Math.abs(n/den-x);if(er<e-1e-9){e=er;bn=n;bd=den}}const g=(a,b)=>b?g(b,a%b):a;const k=g(bn,bd)||1;return bn/k+"/"+bd/k};
+const when=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const toast=t=>{$("#toast").textContent=t;$("#toast").classList.add("on");setTimeout(()=>$("#toast").classList.remove("on"),1800)};
+(async()=>{
+  const id=new URLSearchParams(location.search).get("id");
+  const b=await (await fetch("/api/target-bet?id="+id)).json();
+  if(b.error){$("#app").innerHTML='<p class="empty">Bet not found.</p>';return}
+  document.title=`TARGET — ${b.user}'s ${b.legs.length}-leg ${b.risk} risk bet`;
+  const won=b.status==="won",lost=b.status==="lost";
+  const outcome=won?`<span class="pos">Won ${money(b.returns)}</span>`:lost?`<span class="neg">Lost ${money(b.stake)}</span>`:`Returns ${money(b.stake*b.odds)} if it lands`;
+  const legs=b.legs.map(l=>`<a class="leg ${l.result||""}" href="/target-event.html?m=${l.match}"><div><div class="c">${l.comp||""} · ${l.market}</div><div class="t">${l.home} v ${l.away}</div><div class="p">${l.pick}</div><div class="c">${when(l.ko)}</div></div><div class="o">${(+l.price).toFixed(2)}<small>${frac(+l.price)} · ${l.result||"open"}</small></div></a>`).join("");
+  $("#app").innerHTML=`
+  <h1><em>${b.user}</em></h1>
+  <p class="sub">wanted ${money(b.target)} from ${money(b.stake)} · ${when(b.placed_at)}</p>
+  <div class="row"><span class="tag ${b.risk}">${b.risk} risk</span><span class="tag ${b.status}">${b.status}</span></div>
+  <div class="tiles"><div class="tile"><small>Legs</small><b>${b.legs.length}</b></div><div class="tile"><small>Odds</small><b>${(+b.odds).toFixed(2)}</b></div><div class="tile"><small>Stake</small><b>${money(b.stake).replace(".00","")}</b></div></div>
+  <div class="panel">${legs}</div>
+  <div class="panel pad" style="font-size:15px;font-weight:600">${outcome}</div>
+  <a class="btn" href="/target.html?copy=${b.id}">Copy this bet</a>
+  <div class="row"><button class="btn ghost" id="share">Share link</button><a class="btn ghost" href="/target-feed.html">Back to feed</a></div>`;
+  $("#share").onclick=async()=>{const u=location.href;if(navigator.share){try{await navigator.share({title:document.title,url:u})}catch(e){}}else{await navigator.clipboard.writeText(u);toast("Link copied")}};
+})();
+</script>
+</body>
+</html>

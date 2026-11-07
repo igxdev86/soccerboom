@@ -61,7 +61,7 @@ footer{color:var(--muted);font-size:11px;text-align:center;padding-top:24px;line
 </head>
 <body>
 <div class="wrap">
-<header><div class="logo">TARGET<span>.bet</span></div><div class="src" id="src">loading prices…</div></header>
+<header><div class="logo">TARGET<span>.bet</span></div><div style="display:flex;gap:12px;align-items:center"><a href="/target-feed.html" style="color:var(--muted);font:600 11px var(--m);text-decoration:none">FEED</a><div class="src" id="src">loading prices…</div></div></header>
 <h1>Tell us what<br>you want to <em>win</em>.</h1>
 
 <div class="panel">
@@ -121,13 +121,20 @@ function build(){
   }
   render(legs);
 }
-function render(legs){
+async function loadCopy(){
+  const id=new URLSearchParams(location.search).get("copy"); if(!id) return;
+  const b=await (await fetch("/api/target-bet?id="+id)).json(); if(!b||b.error) return;
+  $("#win").value=b.target; $("#stake").value=b.stake; risk=b.risk;
+  $$(".risk button").forEach(x=>x.classList.toggle("on",x.dataset.r===risk)); sync();
+  render(b.legs.map(l=>({...l,result:undefined})), `Copied from ${b.user}`);
+}
+function render(legs,label){
   const stake=+$("#stake").value||0; $("#slip").classList.add("show");
-  $("#sr").textContent={low:"Low risk",mid:"Medium risk",high:"High risk"}[risk];
+  $("#sr").textContent=label||{low:"Low risk",mid:"Medium risk",high:"High risk"}[risk];
   if(!legs.length){$("#legs").innerHTML='<div class="err">Can\'t hit that target at this risk with today\'s prices. Lower the target, raise the stake or go higher risk.</div>';$("#tl").textContent=$("#to").textContent=$("#tr").textContent="–";$("#st").textContent="No bet";return}
   legs.sort((a,b)=>a.ko<b.ko?-1:1);
   const odds=legs.reduce((p,l)=>p*l.price,1);
-  $("#legs").innerHTML=legs.map(l=>`<div class="leg"><div><div class="c">${l.comp||""} · ${l.market}</div><div class="t">${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${l.price.toFixed(2)}<small>${frac(l.price)} · ${new Date(l.ko).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}</small></div></div>`).join("");
+  $("#legs").innerHTML=legs.map(l=>`<a class="leg" href="/target-event.html?m=${l.match}" style="color:inherit;text-decoration:none"><div><div class="c">${l.comp||""} · ${l.market}</div><div class="t">${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${l.price.toFixed(2)}<small>${frac(l.price)} · ${new Date(l.ko).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}</small></div></a>`).join("");
   $("#tl").textContent=legs.length;$("#to").textContent=odds.toFixed(2);$("#tr").textContent="£"+(stake*odds).toFixed(2);
   $("#st").textContent=legs.length===1?"Single":legs.length===2?"Double":legs.length===3?"Treble":legs.length+"-fold";
   $("#slip").scrollIntoView({behavior:"smooth",block:"start"});
@@ -144,7 +151,7 @@ $$(".chips button").forEach(c=>c.onclick=()=>{$("#win").value=c.dataset.w;sync()
 $$(".risk button").forEach(b=>b.onclick=()=>{$$(".risk button").forEach(x=>x.classList.remove("on"));b.classList.add("on");risk=b.dataset.r;if($("#slip").classList.contains("show"))build()});
 $("#build").onclick=build;$("#again").onclick=build;$("#reset").onclick=reset;
 $("#place").onclick=()=>alert("Concept only — would hand the slip to the sportsbook pre-filled.");
-sync();load();
+sync();load();loadCopy();
 </script>
 </body>
 </html>

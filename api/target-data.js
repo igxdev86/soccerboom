@@ -1,4 +1,5 @@
 // GET /api/target-data → feed + machine stats + bot leaderboard
+const name = require("./_names");
 const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY;
 const sbH = { apikey: SK, Authorization: "Bearer " + SK };
 module.exports = async (req, res) => { try {
@@ -15,9 +16,9 @@ module.exports = async (req, res) => { try {
     const bt = bots[b.bot] = bots[b.bot] || { bot: b.bot, n: 0, won: 0, staked: 0, returned: 0 };
     bt.n++; if (b.status === "won") bt.won++; bt.staked += +b.stake; bt.returned += +b.returns || 0;
   }
-  const feed = all.slice(0, 300);
-  const settled = bets.filter(b => b.settled_at).sort((a, b) => a.settled_at < b.settled_at ? 1 : -1).slice(0, 100);
+  const feed = all.slice(0, 300).map(b => ({ ...b, user: name(b.bot) }));
+  const settled = bets.filter(b => b.settled_at).sort((a, b) => a.settled_at < b.settled_at ? 1 : -1).slice(0, 100).map(b => ({ ...b, user: name(b.bot) }));
   const nobet = all.filter(b => b.status === "nobet").length;
   res.setHeader("Cache-Control", "no-store");
-  res.status(200).json({ stats, bots: Object.values(bots).map(b => ({ ...b, pl: +(b.returned - b.staked).toFixed(2) })).sort((a, b) => b.pl - a.pl), feed, settled, nobet, total: all.length });
+  res.status(200).json({ stats, bots: Object.values(bots).map(b => ({ ...b, user: name(b.bot), pl: +(b.returned - b.staked).toFixed(2) })).sort((a, b) => b.pl - a.pl), feed, settled, nobet, total: all.length });
 } catch (e) { res.status(200).json({ crashed: true, error: String(e && e.stack || e) }); } };

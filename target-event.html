@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TARGET — event</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/target.css">
+</head>
+<body>
+<div class="wrap">
+<header><a class="logo" href="/target.html">TARGET<span>.bet</span></a><nav class="nav"><a href="/target.html">Build</a><a href="/target-feed.html">Feed</a></nav></header>
+<div id="app"><p class="empty">Loading event…</p></div>
+<footer>Prices Bet365 via TheStatsAPI. Insights are generated from results data, not tips. 18+ · BeGambleAware.org</footer>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const money=n=>"£"+(+n).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+const frac=d=>{const x=d-1;let bn=Math.round(x),bd=1,e=9;for(let den=1;den<=20;den++){const n=Math.round(x*den),er=Math.abs(n/den-x);if(er<e-1e-9){e=er;bn=n;bd=den}}const g=(a,b)=>b?g(b,a%b):a;const k=g(bn,bd)||1;return bn/k+"/"+bd/k};
+const when=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const pc=o=>o?Math.round(100/o)+"%":"";
+const price=(label,o)=>o?`<div class="price"><small>${label}</small><b>${o.toFixed(2)}</b><i>${frac(o)} · ${pc(o)}</i></div>`:"";
+const formRow=(name,f)=>`<div class="leg"><div><div class="t">${name}</div><div class="form">${f.map(x=>`<span class="${x.r}" title="${x.opp} ${x.gf}-${x.ga}">${x.r}</span>`).join("")||'<span>–</span>'}</div></div><div class="o">${f.length?(f.reduce((s,x)=>s+x.gf,0)/f.length).toFixed(1):"–"}<small>goals/game</small></div></div>`;
+
+function insights(d){
+  const h=d.match.home.name,a=d.match.away.name,hf=d.home_form,af=d.away_form,o=d.odds,out=[];
+  const w=f=>f.filter(x=>x.r==="W").length, l=f=>f.filter(x=>x.r==="L").length;
+  const gf=f=>f.reduce((s,x)=>s+x.gf,0), ga=f=>f.reduce((s,x)=>s+x.ga,0);
+  if(hf.length) out.push(`<b>${h}</b> have won ${w(hf)} of their last ${hf.length}${l(hf)===0?" without defeat":l(hf)>=hf.length-1?" and look out of form":""}, scoring ${gf(hf)} and conceding ${ga(hf)}.`);
+  if(af.length) out.push(`<b>${a}</b> have won ${w(af)} of their last ${af.length}${l(af)===0?" without defeat":l(af)>=af.length-1?" and are struggling":""}, scoring ${gf(af)} and conceding ${ga(af)}.`);
+  const all=[...hf,...af];
+  if(all.length>=6){
+    const btts=all.filter(x=>x.gf>0&&x.ga>0).length, o25=all.filter(x=>x.gf+x.ga>2.5).length;
+    out.push(`Across both sides' last ${all.length} games, both teams scored in <b>${Math.round(100*btts/all.length)}%</b> and over 2.5 goals landed in <b>${Math.round(100*o25/all.length)}%</b>.`);
+    if(o.btts){const imp=100/o.btts.yes;const r=100*btts/all.length;if(r>imp+10)out.push(`BTTS Yes at ${o.btts.yes.toFixed(2)} implies ${Math.round(imp)}% — recent form says ${Math.round(r)}%. <b>The price looks generous.</b>`);else if(r<imp-10)out.push(`BTTS Yes implies ${Math.round(imp)}% but recent form says only ${Math.round(r)}%. <b>Short.</b>`);}
+    if(o.totals&&o.totals["2.5"]){const imp=100/o.totals["2.5"].over;const r=100*o25/all.length;if(r>imp+10)out.push(`Over 2.5 at ${o.totals["2.5"].over.toFixed(2)} implies ${Math.round(imp)}% vs <b>${Math.round(r)}%</b> in recent games.`);}
+  }
+  if(o.result){const fav=o.result.home<o.result.away?h:a,fo=Math.min(o.result.home,o.result.away);out.push(`Bet365 make <b>${fav}</b> favourites at ${fo.toFixed(2)} (${pc(fo)} implied)${fo<1.4?" — a banker-type price that suits low-risk accas":fo>2.2?" — a tight match, draw at "+o.result.draw.toFixed(2):""}.`);}
+  if(d.h2h.length){const hw=d.h2h.filter(x=>(x.home===h&&x.hg>x.ag)||(x.away===h&&x.ag>x.hg)).length,aw=d.h2h.filter(x=>(x.home===a&&x.hg>x.ag)||(x.away===a&&x.ag>x.hg)).length;out.push(`Head to head (last ${d.h2h.length}): ${h} ${hw}, ${a} ${aw}, drawn ${d.h2h.length-hw-aw}.`);}
+  if(d.bets.length){const c={};d.bets.forEach(b=>{const k=b.leg.pick;c[k]=(c[k]||0)+1});const top=Object.entries(c).sort((x,y)=>y[1]-x[1])[0];out.push(`<b>${d.bets.length}</b> TARGET users have this match in a bet. Most popular pick: <b>${top[0]}</b> (${top[1]}).`);}
+  return out;
+}
+
+(async()=>{
+  const m=new URLSearchParams(location.search).get("m");
+  const d=await (await fetch("/api/target-event?m="+m)).json();
+  if(d.error){$("#app").innerHTML='<p class="empty">Event not found.</p>';return}
+  const M=d.match,h=M.home.name,a=M.away.name,o=d.odds;
+  document.title=`TARGET — ${h} v ${a} preview`;
+  const fin=M.status==="finished"&&M.score&&M.score.home!=null;
+  const bets=d.bets.map(b=>`<a class="leg ${b.leg.result||""}" href="/target-bet.html?id=${b.id}"><div><div class="user">${b.user}<small>${b.legs.length} leg${b.legs.length>1?"s":""} · ${b.risk}</small></div><div class="p">${b.leg.pick}</div></div><div class="o">${(+b.leg.price).toFixed(2)}<small>${money(b.stake)} → ${money(b.stake*b.odds)}</small></div></a>`).join("");
+  const totals=o.totals?Object.entries(o.totals).filter(([k])=>["1.5","2.5","3.5"].includes(k)).map(([k,v])=>price("Over "+k,v.over)+price("Under "+k,v.under)).join(""):"";
+  $("#app").innerHTML=`
+  <h1>${h} <em>v</em> ${a}</h1>
+  <p class="sub">${when(M.ko)}${M.matchday?" · matchday "+M.matchday:""}${fin?` · <b style="color:var(--fg)">FT ${M.score.home}–${M.score.away}</b>`:""}</p>
+  ${o.result?`<div class="prices">${price(h,o.result.home)}${price("Draw",o.result.draw)}${price(a,o.result.away)}</div>`:'<p class="empty">No prices yet.</p>'}
+  <h2>Preview</h2>
+  <div class="panel">${insights(d).map(t=>`<div class="insight">${t}</div>`).join("")||'<div class="insight">Not enough data yet.</div>'}</div>
+  <h2>Form</h2>
+  <div class="panel">${formRow(h,d.home_form)}${formRow(a,d.away_form)}</div>
+  ${o.btts||totals?`<h2>More markets</h2><div class="prices">${o.btts?price("BTTS Yes",o.btts.yes)+price("BTTS No",o.btts.no):""}${totals}</div>`:""}
+  ${d.h2h.length?`<h2>Head to head</h2><div class="panel"><table>${d.h2h.map(x=>`<tr><td>${x.home} v ${x.away}</td><td class="r">${x.hg}–${x.ag}</td><td class="r">${new Date(x.date).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"})}</td></tr>`).join("")}</table></div>`:""}
+  <h2>In users' bets (${d.bets.length})</h2>
+  <div class="panel">${bets||'<p class="empty">Nobody has this one yet.</p>'}</div>
+  <a class="btn" href="/target.html">Build a bet</a>`;
+})();
+</script>
+</body>
+</html>

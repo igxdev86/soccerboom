@@ -43,6 +43,10 @@ th:first-child,td:first-child{text-align:left;font-family:var(--b);font-weight:7
 .leg .p{color:var(--acc);font-weight:700}
 .leg .o{font-family:var(--m);white-space:nowrap}
 .leg.won .o{color:var(--low)}.leg.lost .o{color:var(--high)}.leg.void .o{color:var(--muted);text-decoration:line-through}
+a{color:inherit;text-decoration:none}
+.acts{display:flex;gap:6px;padding:8px 12px}
+.acts a{flex:1;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px;font-weight:700;font-size:13px}
+.acts a:first-child{background:var(--acc);color:var(--ink);border-color:var(--acc)}
 .empty{color:var(--muted);text-align:center;padding:30px 0;font-size:14px}
 .row{display:flex;gap:6px;margin:6px 0 12px}
 .row button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:10px;font:600 13px var(--b)}
@@ -50,7 +54,7 @@ th:first-child,td:first-child{text-align:left;font-family:var(--b);font-weight:7
 </head>
 <body>
 <div class="wrap">
-<header><div class="logo">TARGET<span>.bet</span><small>BOT LAB</small></div><div class="st" id="st">loading…</div></header>
+<header><a class="logo" href="/target.html" style="color:var(--acc);text-decoration:none">TARGET<span>.bet</span><small>LIVE FEED</small></a><div class="st" id="st">loading…</div></header>
 
 <div class="tiles">
   <div class="tile"><small>Bets</small><b id="kN">–</b></div>
@@ -68,7 +72,7 @@ th:first-child,td:first-child{text-align:left;font-family:var(--b);font-weight:7
   <p class="empty" id="mnote"></p>
 </div>
 <div class="sec" id="bots">
-  <table><thead><tr><th>Bot</th><th>Bets</th><th>Won</th><th>Staked</th><th>Returned</th><th>P/L</th></tr></thead><tbody id="bt"></tbody></table>
+  <table><thead><tr><th>User</th><th>Bets</th><th>Won</th><th>Staked</th><th>Returned</th><th>P/L</th></tr></thead><tbody id="bt"></tbody></table>
 </div>
 </div>
 
@@ -79,9 +83,9 @@ const when=iso=>new Date(iso).toLocaleString("en-GB",{weekday:"short",day:"numer
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");document.querySelectorAll(".sec").forEach(s=>s.classList.toggle("on",s.id===b.dataset.t))});
 
 function betCard(b){
-  const legs=b.legs.map(l=>`<div class="leg ${l.result||""}"><div><div class="c">${l.comp||""} · ${l.market}</div><div>${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${(+l.price).toFixed(2)}<br><span class="c">${l.result||"open"}</span></div></div>`).join("");
+  const legs=b.legs.map(l=>`<a class="leg ${l.result||""}" href="/target-event.html?m=${l.match}" onclick="event.stopPropagation()"><div><div class="c">${l.comp||""} · ${l.market}</div><div>${l.home} v ${l.away}</div><div class="p">${l.pick}</div></div><div class="o">${(+l.price).toFixed(2)}<br><span class="c">${l.result||"open"}</span></div></a>`).join("")+`<div class="acts"><a href="/target.html?copy=${b.id}" onclick="event.stopPropagation()">Copy bet</a><a href="/target-bet.html?id=${b.id}" onclick="event.stopPropagation()">Open</a></div>`;
   const ret=b.status==="won"?`<span class="pos">+${money(b.returns-b.stake)}</span>`:b.status==="lost"?`<span class="neg">−${money(b.stake)}</span>`:`to win ${money(b.stake*b.odds)}`;
-  return `<div class="bet" onclick="this.classList.toggle('open')"><div class="bh"><div><div class="who">Bot ${String(b.bot).padStart(3,"0")}<small>${when(b.settled_at||b.placed_at)}</small></div><div class="amt">${money(b.stake)} → target ${money(b.target)} · ${b.legs.length} leg${b.legs.length>1?"s":""} @ ${(+b.odds).toFixed(2)}</div></div><div style="text-align:right"><span class="tag ${b.risk}">${b.risk}</span> <span class="tag ${b.status}">${b.status}</span><div class="amt" style="margin-top:4px">${ret}</div></div></div><div class="legs">${legs}</div></div>`;
+  return `<div class="bet" onclick="this.classList.toggle('open')"><div class="bh"><div><div class="who">${b.user}<small>${when(b.settled_at||b.placed_at)}</small></div><div class="amt">${money(b.stake)} → target ${money(b.target)} · ${b.legs.length} leg${b.legs.length>1?"s":""} @ ${(+b.odds).toFixed(2)}</div></div><div style="text-align:right"><span class="tag ${b.risk}">${b.risk}</span> <span class="tag ${b.status}">${b.status}</span><div class="amt" style="margin-top:4px">${ret}</div></div></div><div class="legs">${legs}</div></div>`;
 }
 function row(name,s){const hit=s.won+s.lost?Math.round(100*s.won/(s.won+s.lost)):0;const roi=s.staked?((s.returned-s.staked)/s.staked*100):0;
   return `<tr><td>${name}</td><td>${s.n}</td><td>${s.won}</td><td>${s.open}</td><td>${hit}%</td><td>${s.n?(s.legs/s.n).toFixed(1):"–"}</td><td>${money(s.staked)}</td><td>${money(s.returned)}</td><td class="${roi>=0?"pos":"neg"}">${roi.toFixed(0)}%</td></tr>`}
@@ -98,7 +102,7 @@ async function load(){
   $("#settled").innerHTML=d.settled.map(betCard).join("")||'<p class="empty">Nothing settled yet.</p>';
   $("#mt").innerHTML=["low","mid","high"].map(k=>row(k,d.stats[k])).join("")+row("All",a);
   $("#mnote").textContent=`${d.total} rows · ${d.nobet} times the builder couldn't hit target. Machine P/L is the bookie's view inverted: bots up = house down.`;
-  $("#bt").innerHTML=d.bots.map(b=>`<tr><td>Bot ${String(b.bot).padStart(3,"0")}</td><td>${b.n}</td><td>${b.won}</td><td>${money(b.staked)}</td><td>${money(b.returned)}</td><td class="${b.pl>=0?"pos":"neg"}">${b.pl>=0?"+":""}${money(b.pl)}</td></tr>`).join("");
+  $("#bt").innerHTML=d.bots.map(b=>`<tr><td>${b.user}</td><td>${b.n}</td><td>${b.won}</td><td>${money(b.staked)}</td><td>${money(b.returned)}</td><td class="${b.pl>=0?"pos":"neg"}">${b.pl>=0?"+":""}${money(b.pl)}</td></tr>`).join("");
 }
 load();
 </script>
