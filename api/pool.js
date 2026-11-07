@@ -1,5 +1,5 @@
 // GET /api/pool?days=3 → flat selection pool (Bet365 via TheStatsAPI). Cached 10 min.
-const { buildPool } = require("../lib/target");
+const { buildPool } = require("./_target");
 module.exports = async (req, res) => {
   const days = Math.min(parseInt(req.query.days || "3", 10), 7);
   const out = await buildPool(days);

@@ -1,9 +1,9 @@
 // GET /api/target-run → settles open bot bets, then places today's round of 100 bot bets if not yet placed.
 // ?secret=SYNC_SECRET&force=1 places an extra round today regardless.
-const { tsa, buildPool, build, settleLeg } = require("../lib/target");
+const { tsa, buildPool, build, settleLeg } = require("./_target");
 const SB = process.env.SUPABASE_URL, SK = process.env.SUPABASE_SERVICE_KEY;
-const sbH = { apikey: SK, Authorization: "Bearer " + SK, "Content-Type": "application/json", Prefer: "return=minimal" };
-const sb = (path, opt = {}) => fetch(SB + "/rest/v1/" + path, { ...opt, headers: { ...sbH, ...(opt.headers || {}) } });
+const sbH = { apikey: SK, Authorization: "Bearer " + SK, "Content-Type": "application/json" };
+const sb = (path, opt = {}) => fetch(SB + "/rest/v1/" + path, { ...opt, headers: { ...sbH, ...(opt.method ? { Prefer: "return=minimal" } : {}) } });
 
 const TARGETS = [10, 10, 10, 20, 20, 50, 50, 100, 100, 250, 500, 1000];
 const STAKES = [1, 1, 1, 2, 2, 5, 5, 10, 20];
@@ -16,7 +16,7 @@ function persona(b) {
 }
 
 async function settle() {
-  const r = await sb("target_bets?status=eq.open&select=id,legs,stake,odds", { headers: { Prefer: "" } });
+  const r = await sb("target_bets?status=eq.open&select=id,legs,stake,odds");
   const open = await r.json();
   if (!Array.isArray(open) || !open.length) return { settled: 0, open: 0 };
   const ids = [...new Set(open.flatMap(b => b.legs.map(l => l.match)))];
@@ -60,9 +60,9 @@ module.exports = async (req, res) => {
   const out = { settle: await settle() };
   const today = new Date().toISOString().slice(0, 10);
   const force = req.query.force && process.env.SYNC_SECRET && req.query.secret === process.env.SYNC_SECRET;
-  const have = await (await sb(`target_bets?day=like.${today}*&select=id&limit=1`, { headers: { Prefer: "" } })).json();
+  const have = await (await sb(`target_bets?day=like.${today}*&select=id&limit=1`)).json();
   if (force || !have.length) {
-    const rounds = await (await sb(`target_bets?day=like.${today}*&select=day`, { headers: { Prefer: "" } })).json();
+    const rounds = await (await sb(`target_bets?day=like.${today}*&select=day`)).json();
     const n = new Set(rounds.map(x => x.day)).size;
     out.place = await place(n ? `${today}#${n + 1}` : today);
   }
