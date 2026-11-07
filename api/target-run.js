@@ -60,10 +60,10 @@ module.exports = async (req, res) => { try {
   const out = { settle: await settle() };
   const today = new Date().toISOString().slice(0, 10);
   const force = req.query.force && process.env.SYNC_SECRET && req.query.secret === process.env.SYNC_SECRET;
-  const have = await (await sb(`target_bets?day=like.${today}*&select=id&limit=1`)).json();
-  if (force || !have.length) {
-    const rounds = await (await sb(`target_bets?day=like.${today}*&select=day`)).json();
-    const n = new Set(rounds.map(x => x.day)).size;
+  const rounds = await (await sb(`target_bets?day=gte.${today}&select=day`)).json();
+  if (!Array.isArray(rounds)) return res.status(200).json({ ...out, sb_error: rounds });
+  const n = new Set(rounds.map(x => x.day)).size;
+  if (force || !n) {
     out.place = await place(n ? `${today}#${n + 1}` : today);
   }
   res.setHeader("Cache-Control", "no-store");
